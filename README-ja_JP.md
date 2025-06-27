@@ -1,6 +1,12 @@
+# Demo
+
+![Demo](./demo.gif)
+
 # Streamlit Multimodal Chat Input
 
 Streamlitのマルチモーダル対応チャット入力コンポーネントです。テキスト入力、画像アップロード、音声入力が可能です。
+
+> **注意**: 音声機能と画像機能はHTTPS環境またはlocalhost環境での動作が必要です。
 
 ## 特徴
 
