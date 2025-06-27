@@ -1,3 +1,5 @@
+[English](README.md) | [日本語](README-ja_JP.md)
+
 # Streamlit Multimodal Chat Input
 
 A multimodal chat input component for Streamlit that supports text input, image upload, and voice input.
