@@ -86,6 +86,65 @@ result = multimodal_chat_input(
 )
 ```
 
+### Chatでの使用方法
+
+
+```python
+import streamlit as st
+import base64
+from st_chat_input_multimodal import multimodal_chat_input
+
+# ページ設定
+st.set_page_config(
+    page_title="マルチモーダルチャット入力デモ",
+    page_icon="💬",
+    layout="wide"
+)
+
+st.subheader("💭 マルチモーダルチャット入力デモ")
+st.markdown("音声入力とファイルアップロード機能付きのチャットアプリケーションをシミュレートします。")
+
+# セッション状態でチャット履歴を管理
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# 新しいメッセージの入力
+chat_result = multimodal_chat_input(
+    placeholder="チャットメッセージを入力してください...",
+    enable_voice_input=True,  # チャットでも音声入力を有効にする
+    key="chat_input"
+)
+if chat_result:
+    st.session_state.chat_history.append(chat_result)
+
+# チャット履歴を表示
+if st.session_state.chat_history:
+    for i, message in enumerate(st.session_state.chat_history):
+        with st.chat_message("user"):
+            if message.get("text"):
+                st.write(message["text"])
+            
+            if message.get("files"):
+                for file in message["files"]:
+                    try:
+                        base64_data = file['data'].split(',')[1] if ',' in file['data'] else file['data']
+                        image_bytes = base64.b64decode(base64_data)
+                        st.image(image_bytes, caption=file['name'], width=200)
+                    except:
+                        st.write(f"📎 {file['name']}")
+            
+            # 音声入力情報を表示
+            if message.get("audio_metadata") and message["audio_metadata"]["used_voice_input"]:
+                st.caption(f"🎤 Voice input ({message['audio_metadata']['transcription_method']})")
+
+
+# 履歴をクリア
+if st.button("履歴をクリア"):
+    st.session_state.chat_history = []
+    st.rerun()
+
+```
+
 ## ライセンス
 
 MIT License
