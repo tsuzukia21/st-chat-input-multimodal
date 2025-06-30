@@ -88,6 +88,64 @@ result = multimodal_chat_input(
 )
 ```
 
+### Chat Usage
+
+```python
+import streamlit as st
+import base64
+from st_chat_input_multimodal import multimodal_chat_input
+
+# Page configuration
+st.set_page_config(
+    page_title="Multimodal Chat Input Demo",
+    page_icon="💬",
+    layout="wide"
+)
+
+st.subheader("💭 Multimodal Chat Input Demo")
+st.markdown("Simulate a chat application with voice input and file upload.")
+
+# Manage history in session state
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# Input for new messages
+chat_result = multimodal_chat_input(
+    placeholder="Enter chat message...",
+    enable_voice_input=True,  # Enable voice input for chat as well
+    key="chat_input"
+)
+if chat_result:
+    st.session_state.chat_history.append(chat_result)
+
+# Display chat history
+if st.session_state.chat_history:
+    for i, message in enumerate(st.session_state.chat_history):
+        with st.chat_message("user"):
+            if message.get("text"):
+                st.write(message["text"])
+            
+            if message.get("files"):
+                for file in message["files"]:
+                    try:
+                        base64_data = file['data'].split(',')[1] if ',' in file['data'] else file['data']
+                        image_bytes = base64.b64decode(base64_data)
+                        st.image(image_bytes, caption=file['name'], width=200)
+                    except:
+                        st.write(f"📎 {file['name']}")
+            
+            # Display voice input information
+            if message.get("audio_metadata") and message["audio_metadata"]["used_voice_input"]:
+                st.caption(f"🎤 Voice input ({message['audio_metadata']['transcription_method']})")
+
+
+# Clear history
+if st.button("Clear History"):
+    st.session_state.chat_history = []
+    st.rerun()
+
+```
+
 ## License
 
 MIT License
