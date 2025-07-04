@@ -21,7 +21,7 @@ _RELEASE = True
 if not _RELEASE:
     _component_func = components.declare_component(
         "st_chat_input_multimodal",
-        url="http://localhost:3001",
+        url="http://localhost:3000",
     )
 else:
     # When we're distributing a production version of the component, we'll
@@ -74,6 +74,7 @@ def multimodal_chat_input(
         Voice recognition method: "web_speech" or "openai_whisper"
     openai_api_key : str, optional
         OpenAI API key (required when openai_whisper is selected)
+        If not provided, will attempt to use OPENAI_API_KEY environment variable
     voice_language : str
         Voice recognition language (e.g., "ja-JP", "en-US")
     max_recording_time : int
@@ -104,6 +105,10 @@ def multimodal_chat_input(
             }
         }
     """
+    
+    # Check for OpenAI API key from environment variable if not provided
+    if openai_api_key is None and voice_recognition_method == "openai_whisper":
+        openai_api_key = os.getenv("OPENAI_API_KEY")
     
     # Default accepted file types
     if accepted_file_types is None:

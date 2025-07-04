@@ -56,7 +56,7 @@ with st.expander("API Specification"):
         max_file_size_mb=10,                             # Maximum file size
         enable_voice_input=False,                        # Enable voice input feature
         voice_recognition_method="web_speech",           # Voice recognition method ("web_speech" or "openai_whisper")
-        openai_api_key=None,                             # OpenAI API key (required when using whisper)
+        openai_api_key=None,                             # OpenAI API key (required when using whisper, or set OPENAI_API_KEY env var)
         voice_language="ja-JP",                          # Voice recognition language
         max_recording_time=60,                           # Maximum recording time (seconds)
         key=None                                         # Component key
@@ -95,6 +95,7 @@ if "chat_history" not in st.session_state:
 chat_result = multimodal_chat_input(
     placeholder="Enter chat message...",
     enable_voice_input=True,  # Enable voice input for chat as well
+    voice_recognition_method="openai_whisper",
     key="chat_input"
 )
 if chat_result:
