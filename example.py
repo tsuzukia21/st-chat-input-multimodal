@@ -95,7 +95,6 @@ if "chat_history" not in st.session_state:
 chat_result = multimodal_chat_input(
     placeholder="Enter chat message...",
     enable_voice_input=True,  # Enable voice input for chat as well
-    voice_recognition_method="openai_whisper",
     key="chat_input"
 )
 if chat_result:
