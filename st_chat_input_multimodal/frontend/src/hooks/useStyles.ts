@@ -42,6 +42,10 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         width: '100%',
         backgroundColor: backgroundColor,
         padding: '12px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        minHeight: '48px',
       } as React.CSSProperties,
 
       filePreviewContainer: {
@@ -101,7 +105,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
       
       container: {
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: '0px',
         padding: '0px',
         backgroundColor: isDragOver ? `${primaryColor}20` : secondaryBackgroundColor,
@@ -111,6 +115,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         fontFamily: theme?.font || 'sans-serif',
         minHeight: '48px',
         position: 'relative',
+        width: '100%',
       } as React.CSSProperties,
 
       addButton: {
@@ -126,8 +131,10 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         marginLeft: '4px',
+        marginTop: '4px',
         fontSize: '16px',
         outline: 'none',
+        alignSelf: 'flex-start',
       } as React.CSSProperties,
 
       voiceButton: {
@@ -145,6 +152,8 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         fontSize: '16px',
         outline: 'none',
         position: 'relative',
+        marginTop: '4px',
+        alignSelf: 'flex-start',
       } as React.CSSProperties,
 
       recordingStatus: {
@@ -165,7 +174,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
       textArea: {
         flex: 1,
         minHeight: '46px',
-        maxHeight: '240px',
+        maxHeight: '320px',
         padding: '12px 16px',
         border: 'none',
         outline: 'none',
@@ -177,6 +186,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         fontFamily: 'inherit',
         borderRadius: '24px',
         opacity: isRecording || isTranscribing ? 0.6 : 1,
+        wordWrap: 'break-word',
       } as React.CSSProperties,
       
       sendButton: {
@@ -192,7 +202,9 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         cursor: hasContent && !disabled && !isRecording && !isTranscribing ? 'pointer' : 'not-allowed',
         transition: 'all 0.2s ease',
         marginRight: '4px',
+        marginTop: '4px',
         fontSize: '16px',
+        alignSelf: 'flex-start',
       } as React.CSSProperties,
       
       charCounter: {

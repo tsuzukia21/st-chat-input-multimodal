@@ -11,6 +11,7 @@ interface TextInputProps {
   disabled: boolean
   maxChars?: number
   style: React.CSSProperties
+  onHeightChange?: (height: number) => void
 }
 
 export const TextInput: React.FC<TextInputProps> = ({
@@ -23,7 +24,8 @@ export const TextInput: React.FC<TextInputProps> = ({
   placeholder,
   disabled,
   maxChars,
-  style
+  style,
+  onHeightChange
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -37,10 +39,43 @@ export const TextInput: React.FC<TextInputProps> = ({
   // 高さ自動調整
   useEffect(() => {
     if (textareaRef.current) {
+      const maxHeight = 320 // useStyles.tsの設定と同じ
+      const minHeight = 46 // 最小高さ
+      
+      // テキストが空の場合は最小高さに戻す
+      if (value === '') {
+        textareaRef.current.style.height = `${minHeight}px`
+        textareaRef.current.style.overflowY = 'hidden'
+        if (onHeightChange) {
+          onHeightChange(minHeight)
+        }
+        return
+      }
+      
       textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+      const scrollHeight = textareaRef.current.scrollHeight
+      
+      // 最大高さを制限
+      if (scrollHeight > maxHeight) {
+        textareaRef.current.style.height = `${maxHeight}px`
+        textareaRef.current.style.overflowY = 'auto'
+        
+        // 最大高さに達した場合は固定値を報告
+        if (onHeightChange) {
+          onHeightChange(maxHeight)
+        }
+      } else {
+        const actualHeight = Math.max(scrollHeight, minHeight)
+        textareaRef.current.style.height = `${actualHeight}px`
+        textareaRef.current.style.overflowY = 'hidden'
+        
+        // 実際の高さを報告
+        if (onHeightChange) {
+          onHeightChange(actualHeight)
+        }
+      }
     }
-  }, [value])
+  }, [value, onHeightChange])
 
   return (
     <>

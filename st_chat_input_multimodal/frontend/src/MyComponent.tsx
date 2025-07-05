@@ -47,6 +47,9 @@ function MultimodalChatInput({
   // Component state
   const [inputText, setInputText] = useState<string>("")
   const [isFocused, setIsFocused] = useState<boolean>(false)
+  const [textAreaHeight, setTextAreaHeight] = useState<number>(46) // デフォルトの高さ
+  const [frameHeightUpdateTimer, setFrameHeightUpdateTimer] = useState<NodeJS.Timeout | null>(null)
+  const [lastFrameHeight, setLastFrameHeight] = useState<number>(0) // 前回のフレーム高さを記録
 
   // File upload hook
   const {
@@ -92,17 +95,60 @@ function MultimodalChatInput({
   const styles = getStyles() || {}
 
   /**
-   * Update frame height when dependencies change
+   * Update frame height when dependencies change with debounce
    */
   useEffect(() => {
-    // 固定位置の場合、適切な高さを設定
-    const baseHeight = 80 // 基本の高さ
-    const filePreviewHeight = uploadedFiles.length > 0 ? uploadedFiles.length * 45 + 10 : 0
-    // 録音ステータスはコンテナ内に表示するため追加の高さは不要
-    
-    const totalHeight = baseHeight + filePreviewHeight
-    Streamlit.setFrameHeight(Math.min(totalHeight, 300)) // 最大300pxに制限
-  }, [uploadedFiles])
+    // 既存のタイマーをクリア
+    if (frameHeightUpdateTimer) {
+      clearTimeout(frameHeightUpdateTimer)
+    }
+
+    // 新しいタイマーを設定（デバウンス）
+    const timer = setTimeout(() => {
+      // 基本の高さ
+      const baseHeight = 40 // パディングとボーダーの基本高さ
+      const filePreviewHeight = uploadedFiles.length > 0 ? uploadedFiles.length * 45 + 10 : 0
+      
+      // テキストエリアの高さを最大値で制限
+      const maxTextAreaHeight = 320 // useStyles.tsの設定と同じ
+      const actualTextAreaHeight = Math.min(textAreaHeight, maxTextAreaHeight)
+      
+      // フレーム高さを計算（最大値を設定して一定以上大きくならないようにする）
+      const totalHeight = baseHeight + filePreviewHeight + actualTextAreaHeight
+      const maxFrameHeight = 400
+      
+      // フレーム高さを設定（安定化のため小さな調整を加える）
+      const finalHeight = Math.min(totalHeight, maxFrameHeight)
+      
+      // 前回の高さと比較して、変更があった場合のみ更新
+      if (Math.abs(finalHeight - lastFrameHeight) > 5) { // 5px以上の変更のみ更新
+        setLastFrameHeight(finalHeight)
+        
+        // 高さが一定以上になった場合は固定値を使用（コンポーネントが上に動くのを防ぐ）
+        if (finalHeight >= maxFrameHeight) {
+          Streamlit.setFrameHeight(maxFrameHeight)
+        } else {
+          Streamlit.setFrameHeight(finalHeight)
+        }
+      }
+    }, 100) // デバウンス時間を100msに増加
+
+    setFrameHeightUpdateTimer(timer)
+
+    // クリーンアップ
+    return () => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+    }
+  }, [uploadedFiles, textAreaHeight, lastFrameHeight])
+
+  /**
+   * Text area height change handler
+   */
+  const handleTextAreaHeightChange = useCallback((height: number) => {
+    setTextAreaHeight(height)
+  }, [])
 
   /**
    * Text input value change handler
@@ -116,7 +162,6 @@ function MultimodalChatInput({
     }
     
     setInputText(value)
-    // 高さ調整は useEffect で行うため、ここでは呼び出さない
   }, [max_chars])
 
   /**
@@ -150,7 +195,16 @@ function MultimodalChatInput({
     clearFiles()
     voiceHook.clearAudioMetadata()
     
-    // 高さ調整は useEffect で行うため、ここでは呼び出さない
+    // 高さを確実にリセット
+    setTextAreaHeight(46)
+    setLastFrameHeight(0) // 前回の高さ記録もリセット
+    
+    // フレーム高さを基本の高さに戻す
+    setTimeout(() => {
+      const baseHeight = 40
+      const minFrameHeight = baseHeight + 46 // 基本高さ + テキストエリア最小高さ
+      Streamlit.setFrameHeight(minFrameHeight)
+    }, 150)
   }, [inputText, uploadedFiles, voiceHook.audioMetadata, disabled, voiceHook.isRecording, voiceHook.isTranscribing, clearFiles, voiceHook.clearAudioMetadata])
 
   /**
@@ -235,6 +289,7 @@ function MultimodalChatInput({
           disabled={disabled || voiceHook.isRecording || voiceHook.isTranscribing}
           maxChars={max_chars}
           style={styles.textArea}
+          onHeightChange={handleTextAreaHeightChange}
         />
         
         {/* Send button */}
