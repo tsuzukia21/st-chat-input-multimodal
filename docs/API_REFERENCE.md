@@ -17,13 +17,13 @@ Internally, the project consists of a thin **Python wrapper** around a **React /
 
 ````mermaid
 flowchart LR
-  subgraph Browser (Frontend)
+  subgraph "Browser (Frontend)"
     Mi[MyComponent.tsx]
     Hooks[hooks/*]
     Comps[components/*]
     Utils[utils/*]
   end
-  subgraph Python (Backend)
+  subgraph "Python (Backend)"
     Wrapper[__init__.py → multimodal_chat_input]
   end
   Wrapper <--> Mi
