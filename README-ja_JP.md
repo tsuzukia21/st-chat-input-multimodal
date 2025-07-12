@@ -145,6 +145,10 @@ if st.button("履歴をクリア"):
 
 ```
 
+### チャットアプリ例
+
+![tsuzukia21/streamlit-chatbot](https://github.com/tsuzukia21/streamlit-chatbot)
+
 ## ライセンス
 
 MIT License
