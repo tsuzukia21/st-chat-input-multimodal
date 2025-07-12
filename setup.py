@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="st-chat-input-multimodal",
-    version="1.0.3",
+    version="1.0.4",
     author="tsuzukia21",
     description="Streamlit multimodal chat input component with text, image, and voice support",
     long_description=long_description,
