@@ -15,19 +15,19 @@
 
 Internally, the project consists of a thin **Python wrapper** around a **React / TypeScript** frontend. Python developers only need the `multimodal_chat_input` function; the TypeScript sources are provided for anyone who wants to contribute or embed the widget elsewhere.
 
-````mermaid
+```mermaid
 flowchart LR
-  subgraph Browser (Frontend)
-    Mi[MyComponent.tsx]
-    Hooks[hooks/*]
-    Comps[components/*]
-    Utils[utils/*]
+  subgraph Browser["Browser (Frontend)"]
+    Mi["MyComponent.tsx"]
+    Hooks["hooks/*"]
+    Comps["components/*"]
+    Utils["utils/*"]
   end
-  subgraph Python (Backend)
-    Wrapper[__init__.py → multimodal_chat_input]
+  subgraph Python["Python (Backend)"]
+    Wrapper["__init__.py → multimodal_chat_input"]
   end
   Wrapper <--> Mi
-````
+```
 
 ---
 
