@@ -179,7 +179,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         border: 'none',
         outline: 'none',
         resize: 'none' as const,
-        fontSize: '14px',
+        fontSize: '16px',
         lineHeight: '1.5',
         backgroundColor: 'transparent',
         color: textColor,

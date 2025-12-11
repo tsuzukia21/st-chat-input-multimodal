@@ -168,6 +168,10 @@ function MultimodalChatInput({
    * Keyboard event handler (Enter to send)
    */
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // IME変換中は送信しない（日本語、中国語などの入力時）
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
