@@ -187,6 +187,9 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         borderRadius: '24px',
         opacity: isRecording || isTranscribing ? 0.6 : 1,
         wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+        whiteSpace: 'pre-wrap',
+        boxSizing: 'border-box',
       } as React.CSSProperties,
       
       sendButton: {
