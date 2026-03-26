@@ -1,3 +1,5 @@
+import type { SpeechRecognitionConstructor } from '../types'
+
 /**
  * Format recording time in MM:SS format
  */
@@ -17,8 +19,8 @@ export const checkWebSpeechSupport = (): boolean => {
 /**
  * Get SpeechRecognition constructor
  */
-export const getSpeechRecognition = (): any => {
-  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+export const getSpeechRecognition = (): SpeechRecognitionConstructor | null => {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null
 }
 
 /**

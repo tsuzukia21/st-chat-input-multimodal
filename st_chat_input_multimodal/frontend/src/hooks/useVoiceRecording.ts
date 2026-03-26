@@ -1,5 +1,11 @@
 import { useState, useRef, useCallback } from 'react'
-import { AudioMetadata } from '../types'
+import {
+  AudioMetadata,
+  SpeechRecognitionErrorEventLike,
+  SpeechRecognitionEventLike,
+  SpeechRecognitionLike,
+} from '../types'
+import { RECORDING_TIMER_INTERVAL_MS } from '../constants'
 import { 
   checkWebSpeechSupport, 
   getSpeechRecognition, 
@@ -28,8 +34,8 @@ export const useVoiceRecording = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioMetadata, setAudioMetadata] = useState<AudioMetadata | null>(null)
   
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const recognitionRef = useRef<any>(null)
+  const recordingTimerRef = useRef<number | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
   /**
@@ -37,7 +43,7 @@ export const useVoiceRecording = ({
    */
   const startRecordingTimer = useCallback(() => {
     setRecordingTime(0)
-    recordingTimerRef.current = setInterval(() => {
+    recordingTimerRef.current = window.setInterval(() => {
       setRecordingTime(prev => {
         if (prev >= maxRecordingTime) {
           stopVoiceRecording()
@@ -45,7 +51,7 @@ export const useVoiceRecording = ({
         }
         return prev + 1
       })
-    }, 1000)
+    }, RECORDING_TIMER_INTERVAL_MS)
   }, [maxRecordingTime])
 
   /**
@@ -53,7 +59,7 @@ export const useVoiceRecording = ({
    */
   const stopRecordingTimer = useCallback(() => {
     if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current)
+      window.clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null
     }
   }, [])
@@ -72,7 +78,7 @@ export const useVoiceRecording = ({
     recognition.interimResults = true
     recognition.lang = voiceLanguage
     
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let finalTranscript = ''
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -93,7 +99,7 @@ export const useVoiceRecording = ({
       }
     }
     
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       console.error('Voice recognition error:', event.error)
       if (event.error !== 'aborted') {
         alert(`Voice recognition error: ${event.error}`)
