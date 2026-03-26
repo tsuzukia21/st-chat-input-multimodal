@@ -71,3 +71,4 @@ template-reactless/**/package-lock.json
 buildcontext/
 .claude
 .specify
+specs
