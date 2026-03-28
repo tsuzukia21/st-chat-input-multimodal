@@ -9,7 +9,9 @@ import {
   DEFAULT_ACCEPTED_FILE_TYPES,
   DEFAULT_MAX_FILE_SIZE_MB,
   DEFAULT_MAX_RECORDING_TIME,
+  KEYBOARD,
   DEFAULT_PLACEHOLDER,
+  SEND_BUTTON_ICON,
   DEFAULT_VOICE_LANGUAGE,
   DEFAULT_VOICE_RECOGNITION_METHOD,
   FRAME_HEIGHT,
@@ -101,6 +103,9 @@ function MultimodalChatInput({
       setInputText(prev => prev + text)
     }
   })
+  const hasContent = inputText.trim().length > 0 || uploadedFiles.length > 0
+  const isSubmitDisabled =
+    !hasContent || disabled || voiceHook.isRecording || voiceHook.isTranscribing
 
   // Styles hook
   const getStyles = useStyles(theme, {
@@ -109,7 +114,7 @@ function MultimodalChatInput({
     isAddButtonPressed: false,
     isRecording: voiceHook.isRecording,
     isTranscribing: voiceHook.isTranscribing,
-    hasContent: inputText.trim().length > 0 || uploadedFiles.length > 0,
+    hasContent,
     disabled: disabled || false,
     uploadedFilesLength: uploadedFiles.length
   })
@@ -187,24 +192,10 @@ function MultimodalChatInput({
   }, [maxChars])
 
   /**
-   * Keyboard event handler (Enter to send)
-   */
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // IME変換中は送信しない（日本語、中国語などの入力時）
-    if (e.nativeEvent.isComposing || e.keyCode === 229) {
-      return
-    }
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }, [inputText, uploadedFiles, voiceHook.audioMetadata, disabled, voiceHook.isRecording, voiceHook.isTranscribing])
-
-  /**
    * Send button click handler
    */
   const handleSubmit = useCallback(() => {
-    if ((!inputText.trim() && uploadedFiles.length === 0) || disabled || voiceHook.isRecording || voiceHook.isTranscribing) return
+    if (isSubmitDisabled) return
 
     // Send value to Streamlit with unique timestamp to allow duplicate submissions
     const result: ComponentResult = {
@@ -230,7 +221,21 @@ function MultimodalChatInput({
       const minFrameHeight = FRAME_HEIGHT.base + FRAME_HEIGHT.minTextArea
       Streamlit.setFrameHeight(minFrameHeight)
     }, FRAME_HEIGHT.resetDelayMs)
-  }, [inputText, uploadedFiles, voiceHook.audioMetadata, disabled, voiceHook.isRecording, voiceHook.isTranscribing, clearFiles, voiceHook.clearAudioMetadata])
+  }, [inputText, uploadedFiles, voiceHook.audioMetadata, isSubmitDisabled, clearFiles, voiceHook.clearAudioMetadata])
+
+  /**
+   * Keyboard event handler (Enter to send)
+   */
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // IME変換中は送信しない（日本語、中国語などの入力時）
+    if (e.nativeEvent.isComposing || e.keyCode === KEYBOARD.compositionEventKeyCode) {
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }, [handleSubmit])
 
   /**
    * Focus state management
@@ -320,14 +325,14 @@ function MultimodalChatInput({
         {/* Send button */}
         <button
           onClick={handleSubmit}
-          disabled={(!inputText.trim() && uploadedFiles.length === 0) || disabled || voiceHook.isRecording || voiceHook.isTranscribing}
+          disabled={isSubmitDisabled}
           style={styles.sendButton}
           title="Send (Enter)"
         >
           <svg
-            width="25"
-            height="25"
-            viewBox="0 0 16 16"
+            width={SEND_BUTTON_ICON.size}
+            height={SEND_BUTTON_ICON.size}
+            viewBox={SEND_BUTTON_ICON.viewBox}
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
