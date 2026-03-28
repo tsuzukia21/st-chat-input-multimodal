@@ -15,6 +15,7 @@ A multimodal chat input component for Streamlit that supports text input, image 
 - 📝 **Text Input**: Same usability as st.chat_input
 - 🖼️ **Image File Upload**: Supports jpg, png, gif, webp
 - 🎤 **Voice Input**: Web Speech API / OpenAI Whisper API support
+- 🔒 **Input Validation**: File count, file size, and parameter validation
 - 🎨 **Streamlit Standard Theme**: Fully compatible design
 - 🔄 **Drag & Drop**: File drag and drop support
 - ⌨️ **Ctrl+V**: Paste images from clipboard
@@ -83,10 +84,13 @@ result = multimodal_chat_input(
     max_chars=500,
     accepted_file_types=["jpg", "png", "gif", "webp"],
     max_file_size_mb=10,
+    max_files=5,
     disabled=False,
     key="custom_chat_input"
 )
 ```
+
+`max_chars`, `max_file_size_mb`, and `max_files` must be positive integers. `max_recording_time` must be between `1` and `300`, and `voice_recognition_method` must be either `"web_speech"` or `"openai_whisper"`.
 
 ### Chat Usage
 

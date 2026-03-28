@@ -1,7 +1,7 @@
 # st_chat_input_multimodal — API Reference
 
 > Comprehensive documentation for all public APIs, React components, hooks, and utilities that ship with this repository.  
-> Last updated: 2025-07-06
+> Last updated: 2026-03-28
 
 ---
 
@@ -55,6 +55,7 @@ result = multimodal_chat_input(
     voice_recognition_method="web_speech",  # or "openai_whisper"
     voice_language="en-US",
     accepted_file_types=["png", "jpg", "jpeg"],
+    max_files=3,
 )
 
 if result:
@@ -72,6 +73,7 @@ multimodal_chat_input(
     disabled: bool = False,
     accepted_file_types: list[str] | None = None,
     max_file_size_mb: int = 10,
+    max_files: int = 5,
     enable_voice_input: bool = False,
     voice_recognition_method: Literal["web_speech", "openai_whisper"] = "web_speech",
     openai_api_key: str | None = None,
@@ -88,12 +90,21 @@ multimodal_chat_input(
 | `disabled` | `bool` | `False` | Global disable toggle. |
 | `accepted_file_types` | `list[str] \| None` | image types | Allowed extensions (without dot). |
 | `max_file_size_mb` | `int` | `10` | Per-file size limit. |
+| `max_files` | `int` | `5` | Maximum number of uploaded files per input session. |
 | `enable_voice_input` | `bool` | `False` | Show microphone button. |
 | `voice_recognition_method` | `"web_speech" \| "openai_whisper"` | `"web_speech"` | Which speech-to-text backend to use. |
-| `openai_api_key` | `str \| None` | `None` | Required when using `openai_whisper`. If omitted, the `OPENAI_API_KEY` env-var is read. |
+| `openai_api_key` | `str \| None` | `None` | Used only on the Python side for `openai_whisper`. If omitted, the `OPENAI_API_KEY` env-var is read. |
 | `voice_language` | `str` | "ja-JP" | BCP-47 language tag for recognition. |
 | `max_recording_time` | `int` | `60` | Hard stop in seconds. |
 | `key` | `str \| None` | `None` | Unique Streamlit component key. |
+
+#### 3.1.1  Validation rules
+
+- `max_chars` must be `None` or a positive integer.
+- `max_file_size_mb` must be a positive integer.
+- `max_files` must be a positive integer.
+- `max_recording_time` must be between `1` and `300`.
+- `voice_recognition_method` must be `"web_speech"` or `"openai_whisper"`.
 
 #### 3.2  Return schema
 
@@ -194,6 +205,7 @@ multimodal_chat_input(
     enable_voice_input=False,
     accepted_file_types=["png"],
     max_file_size_mb=5,
+    max_files=3,
 )
 ```
 

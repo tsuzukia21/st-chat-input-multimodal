@@ -15,7 +15,11 @@ import streamlit.components.v1 as components
 _RELEASE = True
 
 _DEFAULT_ACCEPTED_FILE_TYPES = ["jpg", "jpeg", "png", "gif", "webp"]
+_DEFAULT_MAX_FILES = 5
+_MIN_RECORDING_TIME = 1
+_MAX_RECORDING_TIME = 300
 _TRANSCRIPTION_REQUEST_TYPE = "transcription_request"
+_VALID_VOICE_RECOGNITION_METHODS = {"web_speech", "openai_whisper"}
 _AUDIO_FILENAME_BY_MIME_TYPE = {
     "audio/mp4": "recording.m4a",
     "audio/mpeg": "recording.mp3",
@@ -120,12 +124,49 @@ def _transcribe_audio(
     return response.text.strip()
 
 
+def _is_positive_integer(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _validate_component_parameters(
+    max_chars: Optional[int],
+    max_file_size_mb: int,
+    max_files: int,
+    max_recording_time: int,
+    voice_recognition_method: str,
+) -> None:
+    if max_chars is not None and not _is_positive_integer(max_chars):
+        raise ValueError("max_chars must be a positive integer")
+
+    if not _is_positive_integer(max_file_size_mb):
+        raise ValueError("max_file_size_mb must be a positive integer")
+
+    if not _is_positive_integer(max_files):
+        raise ValueError("max_files must be a positive integer")
+
+    if (
+        not isinstance(max_recording_time, int)
+        or isinstance(max_recording_time, bool)
+        or not _MIN_RECORDING_TIME <= max_recording_time <= _MAX_RECORDING_TIME
+    ):
+        raise ValueError("max_recording_time must be between 1 and 300")
+
+    if (
+        not isinstance(voice_recognition_method, str)
+        or voice_recognition_method not in _VALID_VOICE_RECOGNITION_METHODS
+    ):
+        raise ValueError(
+            "voice_recognition_method must be 'web_speech' or 'openai_whisper'"
+        )
+
+
 def multimodal_chat_input(
     placeholder: str = "Type your message here...",
     max_chars: Optional[int] = None,
     disabled: bool = False,
     accepted_file_types: Optional[List[str]] = None,
     max_file_size_mb: int = 10,
+    max_files: int = _DEFAULT_MAX_FILES,
     enable_voice_input: bool = False,
     voice_recognition_method: str = "web_speech",
     openai_api_key: Optional[str] = None,
@@ -153,6 +194,8 @@ def multimodal_chat_input(
         Defaults to all image file types
     max_file_size_mb : int
         Maximum file size in MB
+    max_files : int
+        Maximum number of uploaded files
     enable_voice_input : bool
         Whether to enable voice input functionality
     voice_recognition_method : str
@@ -190,6 +233,14 @@ def multimodal_chat_input(
             }
         }
     """
+
+    _validate_component_parameters(
+        max_chars=max_chars,
+        max_file_size_mb=max_file_size_mb,
+        max_files=max_files,
+        max_recording_time=max_recording_time,
+        voice_recognition_method=voice_recognition_method,
+    )
     
     # Check for OpenAI API key from environment variable if not provided
     if openai_api_key is None and voice_recognition_method == "openai_whisper":
@@ -217,6 +268,7 @@ def multimodal_chat_input(
             disabled=disabled,
             accepted_file_types=accepted_file_types,
             max_file_size_mb=max_file_size_mb,
+            max_files=max_files,
             enable_voice_input=enable_voice_input,
             voice_recognition_method=voice_recognition_method,
             voice_language=voice_language,
