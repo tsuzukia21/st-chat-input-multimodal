@@ -35,7 +35,6 @@ const normalizeComponentArgs = (rawArgs: RawComponentArgs): ComponentArgs => ({
   maxFiles: rawArgs.max_files,
   enableVoiceInput: rawArgs.enable_voice_input,
   voiceRecognitionMethod: rawArgs.voice_recognition_method,
-  openaiApiKey: rawArgs.openai_api_key,
   voiceLanguage: rawArgs.voice_language,
   maxRecordingTime: rawArgs.max_recording_time,
   transcriptionResult: rawArgs.transcription_result,
@@ -60,9 +59,9 @@ function MultimodalChatInput({
     maxFileSizeMb = DEFAULT_MAX_FILE_SIZE_MB,
     enableVoiceInput = false,
     voiceRecognitionMethod = DEFAULT_VOICE_RECOGNITION_METHOD,
-    openaiApiKey,
     voiceLanguage = DEFAULT_VOICE_LANGUAGE,
     maxRecordingTime = DEFAULT_MAX_RECORDING_TIME,
+    transcriptionResult,
   } = normalizedArgs
 
   // Component state
@@ -93,9 +92,9 @@ function MultimodalChatInput({
   // Voice recording hook
   const voiceHook = useVoiceRecording({
     voiceRecognitionMethod,
-    openaiApiKey,
     voiceLanguage,
     maxRecordingTime,
+    transcriptionResult,
     onTextUpdate: (text: string) => {
       setInputText(prev => prev + text)
     }

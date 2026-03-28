@@ -1,13 +1,30 @@
+import base64
+import binascii
+import hashlib
 import os
-import streamlit.components.v1 as components
-from typing import Optional, List, Dict, Any
+from io import BytesIO
+from typing import Any, Dict, List, Optional, Tuple
+
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Create a _RELEASE constant. We'll set this to False while we're developing
 # the component, and True when we're ready to package and distribute it.
 # (This is, of course, optional - there are innumerable ways to manage your
 # release process.)
 _RELEASE = True
+
+_DEFAULT_ACCEPTED_FILE_TYPES = ["jpg", "jpeg", "png", "gif", "webp"]
+_TRANSCRIPTION_REQUEST_TYPE = "transcription_request"
+_AUDIO_FILENAME_BY_MIME_TYPE = {
+    "audio/mp4": "recording.m4a",
+    "audio/mpeg": "recording.mp3",
+    "audio/ogg": "recording.ogg",
+    "audio/wav": "recording.wav",
+    "audio/webm": "recording.webm",
+    "audio/x-m4a": "recording.m4a",
+    "audio/x-wav": "recording.wav",
+}
 
 # Declare a Streamlit component. `declare_component` returns a function
 # that is used to create instances of the component. We're naming this
@@ -33,6 +50,74 @@ else:
         "st_chat_input_multimodal",
         path=build_dir
     )
+
+
+def _build_session_state_key(key: str, suffix: str) -> str:
+    return f"_st_chat_input_multimodal_{suffix}_{key}"
+
+
+def _get_transcription_request(value: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(value, dict):
+        return None
+
+    if value.get("type") != _TRANSCRIPTION_REQUEST_TYPE:
+        return None
+
+    return value
+
+
+def _get_transcription_request_fingerprint(request: Dict[str, Any]) -> str:
+    request_id = str(request.get("request_id", "")).strip()
+    if request_id:
+        return request_id
+
+    audio_data = request.get("audio_data")
+    if not isinstance(audio_data, str) or not audio_data:
+        raise ValueError("audio_data is required for transcription")
+
+    return hashlib.sha256(audio_data.encode("utf-8")).hexdigest()
+
+
+def _decode_audio_data(audio_data: str) -> Tuple[bytes, str]:
+    if not audio_data:
+        raise ValueError("audio_data is required for transcription")
+
+    mime_type = "audio/webm"
+    encoded_audio = audio_data
+
+    if audio_data.startswith("data:"):
+        header, separator, encoded_audio = audio_data.partition(",")
+        if not separator or not encoded_audio:
+            raise ValueError("audio_data is invalid")
+
+        mime_type = header[5:].split(";")[0] or mime_type
+
+    try:
+        return base64.b64decode(encoded_audio), mime_type.lower()
+    except (ValueError, binascii.Error) as exc:
+        raise ValueError("audio_data is invalid") from exc
+
+
+def _transcribe_audio(
+    audio_data: str,
+    language: str,
+    openai_api_key: str,
+) -> str:
+    from openai import OpenAI
+
+    audio_bytes, mime_type = _decode_audio_data(audio_data)
+    audio_buffer = BytesIO(audio_bytes)
+    audio_buffer.name = _AUDIO_FILENAME_BY_MIME_TYPE.get(mime_type, "recording.webm")
+
+    language_code = language.split("-")[0].strip() if language else ""
+    client = OpenAI(api_key=openai_api_key)
+    response = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_buffer,
+        language=language_code or None,
+    )
+
+    return response.text.strip()
 
 
 def multimodal_chat_input(
@@ -73,7 +158,7 @@ def multimodal_chat_input(
     voice_recognition_method : str
         Voice recognition method: "web_speech" or "openai_whisper"
     openai_api_key : str, optional
-        OpenAI API key (required when openai_whisper is selected)
+        OpenAI API key used only on the Python side when openai_whisper is selected.
         If not provided, will attempt to use OPENAI_API_KEY environment variable
     voice_language : str
         Voice recognition language (e.g., "ja-JP", "en-US")
@@ -112,7 +197,7 @@ def multimodal_chat_input(
     
     # Default accepted file types
     if accepted_file_types is None:
-        accepted_file_types = ["jpg", "jpeg", "png", "gif", "webp"]
+        accepted_file_types = _DEFAULT_ACCEPTED_FILE_TYPES.copy()
     
     # Track "previous value" to achieve 
     if key is None:
@@ -120,7 +205,10 @@ def multimodal_chat_input(
     
     # Key to track previous value
     last_value_key = f"_last_multimodal_value_{key}"
-    
+    transcription_result_key = _build_session_state_key(key, "transcription_result")
+    processed_request_key = _build_session_state_key(key, "processed_transcription")
+    transcription_result = st.session_state.pop(transcription_result_key, None)
+
     # Always use st._bottom to fix to the bottom of the screen
     with st._bottom:
         component_value = _component_func(
@@ -131,13 +219,48 @@ def multimodal_chat_input(
             max_file_size_mb=max_file_size_mb,
             enable_voice_input=enable_voice_input,
             voice_recognition_method=voice_recognition_method,
-            openai_api_key=openai_api_key,
             voice_language=voice_language,
             max_recording_time=max_recording_time,
+            transcription_result=transcription_result,
             key=key,
             default=None
         )
-    
+
+    transcription_request = _get_transcription_request(component_value)
+    if transcription_request is not None:
+        request_fingerprint = _get_transcription_request_fingerprint(
+            transcription_request
+        )
+        processed_request = st.session_state.get(processed_request_key)
+
+        if processed_request == request_fingerprint:
+            return None
+
+        if voice_recognition_method != "openai_whisper":
+            raise ValueError(
+                "voice_recognition_method must be 'openai_whisper' for "
+                "transcription requests"
+            )
+
+        if not openai_api_key:
+            raise ValueError(
+                "openai_api_key is required when "
+                "voice_recognition_method is 'openai_whisper'"
+            )
+
+        try:
+            transcription_text = _transcribe_audio(
+                audio_data=str(transcription_request.get("audio_data", "")),
+                language=str(transcription_request.get("language", voice_language)),
+                openai_api_key=openai_api_key,
+            )
+        except Exception as exc:
+            raise RuntimeError("Audio transcription failed") from exc
+
+        st.session_state[processed_request_key] = request_fingerprint
+        st.session_state[transcription_result_key] = transcription_text
+        st.rerun()
+
     # Return the value only once when it changes
     if component_value is not None:
         # Compare with previous value (including timestamp to allow duplicate content)

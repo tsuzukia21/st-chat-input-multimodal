@@ -72,6 +72,7 @@ export interface TranscriptionRequest {
   type: 'transcription_request'
   audio_data: string
   language: string
+  request_id: number
 }
 
 export interface RawComponentArgs {
@@ -82,7 +83,6 @@ export interface RawComponentArgs {
   max_files?: number
   enable_voice_input?: boolean
   voice_recognition_method?: VoiceRecognitionMethod
-  openai_api_key?: string
   voice_language?: string
   max_recording_time?: number
   transcription_result?: string
@@ -96,7 +96,6 @@ export interface ComponentArgs {
   maxFiles?: number
   enableVoiceInput?: boolean
   voiceRecognitionMethod?: VoiceRecognitionMethod
-  openaiApiKey?: string
   voiceLanguage?: string
   maxRecordingTime?: number
   transcriptionResult?: string

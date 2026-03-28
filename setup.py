@@ -26,6 +26,7 @@ setuptools.setup(
     ],
     python_requires=">=3.9",
     install_requires=[
+        "openai>=1.0",
         "streamlit >= 1.2",
     ],
     extras_require={

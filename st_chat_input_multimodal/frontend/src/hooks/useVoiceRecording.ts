@@ -1,31 +1,32 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   AudioMetadata,
   SpeechRecognitionErrorEventLike,
   SpeechRecognitionEventLike,
   SpeechRecognitionLike,
+  VoiceRecognitionMethod,
 } from '../types'
 import { RECORDING_TIMER_INTERVAL_MS } from '../constants'
 import { 
   checkWebSpeechSupport, 
   getSpeechRecognition, 
-  transcribeWithOpenAI,
+  sendAudioForTranscription,
   formatRecordingTime 
 } from '../utils/audioUtils'
 
 interface UseVoiceRecordingProps {
-  voiceRecognitionMethod: "web_speech" | "openai_whisper"
-  openaiApiKey?: string
+  voiceRecognitionMethod: VoiceRecognitionMethod
   voiceLanguage: string
   maxRecordingTime: number
+  transcriptionResult?: string
   onTextUpdate: (text: string) => void
 }
 
 export const useVoiceRecording = ({
   voiceRecognitionMethod,
-  openaiApiKey,
   voiceLanguage,
   maxRecordingTime,
+  transcriptionResult,
   onTextUpdate
 }: UseVoiceRecordingProps) => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
@@ -37,19 +38,46 @@ export const useVoiceRecording = ({
   const recordingTimerRef = useRef<number | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimeRef = useRef<number>(0)
+  const lastRecordingDurationRef = useRef<number>(0)
+
+  useEffect(() => {
+    recordingTimeRef.current = recordingTime
+  }, [recordingTime])
+
+  useEffect(() => {
+    if (voiceRecognitionMethod !== 'openai_whisper' || transcriptionResult === undefined) {
+      return
+    }
+
+    if (transcriptionResult) {
+      onTextUpdate(transcriptionResult)
+      setAudioMetadata({
+        used_voice_input: true,
+        transcription_method: 'openai_whisper',
+        recording_duration: lastRecordingDurationRef.current,
+        language: voiceLanguage
+      })
+    }
+
+    setIsTranscribing(false)
+  }, [voiceRecognitionMethod, transcriptionResult, voiceLanguage, onTextUpdate])
 
   /**
    * Start recording timer
    */
   const startRecordingTimer = useCallback(() => {
     setRecordingTime(0)
+    recordingTimeRef.current = 0
     recordingTimerRef.current = window.setInterval(() => {
       setRecordingTime(prev => {
         if (prev >= maxRecordingTime) {
           stopVoiceRecording()
           return prev
         }
-        return prev + 1
+        const next = prev + 1
+        recordingTimeRef.current = next
+        return next
       })
     }, RECORDING_TIMER_INTERVAL_MS)
   }, [maxRecordingTime])
@@ -113,40 +141,25 @@ export const useVoiceRecording = ({
   /**
    * Handle recording completion
    */
-  const handleRecordingComplete = useCallback(async () => {
+  const handleRecordingComplete = useCallback(async (mimeType?: string) => {
     if (voiceRecognitionMethod === "openai_whisper" && audioChunksRef.current.length > 0) {
-      if (!openaiApiKey) {
-        alert('OpenAI API key is not configured')
-        return
-      }
-
       setIsTranscribing(true)
       
       try {
-        const transcription = await transcribeWithOpenAI(
+        await sendAudioForTranscription(
           audioChunksRef.current,
-          openaiApiKey,
-          voiceLanguage
+          voiceLanguage,
+          mimeType
         )
-        
-        if (transcription) {
-          onTextUpdate(transcription)
-          setAudioMetadata({
-            used_voice_input: true,
-            transcription_method: "openai_whisper",
-            recording_duration: recordingTime,
-            language: voiceLanguage
-          })
-        }
-        
+
+        audioChunksRef.current = []
       } catch (error) {
-        console.error('OpenAI transcription error:', error)
-        alert('Transcription failed. Please check your API key and connection.')
-      } finally {
         setIsTranscribing(false)
+        console.error('Audio transcription request error:', error)
+        alert('Transcription failed. Please try again.')
       }
     }
-  }, [voiceRecognitionMethod, openaiApiKey, voiceLanguage, recordingTime, onTextUpdate])
+  }, [voiceRecognitionMethod, voiceLanguage])
 
   /**
    * Start voice recording
@@ -166,7 +179,7 @@ export const useVoiceRecording = ({
       
       recorder.onstop = () => {
         stream.getTracks().forEach(track => track.stop())
-        handleRecordingComplete()
+        handleRecordingComplete(recorder.mimeType)
       }
       
       setMediaRecorder(recorder)
@@ -189,6 +202,8 @@ export const useVoiceRecording = ({
    * Stop voice recording
    */
   const stopVoiceRecording = useCallback(() => {
+    lastRecordingDurationRef.current = recordingTimeRef.current
+
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop()
     }
