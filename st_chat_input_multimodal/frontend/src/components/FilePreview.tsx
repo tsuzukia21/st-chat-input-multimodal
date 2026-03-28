@@ -1,6 +1,6 @@
 import React from 'react'
 import { FileData } from '../types'
-import { formatFileSize } from '../utils/fileUtils'
+import { formatFileSize, sanitizeFileName } from '../utils/fileUtils'
 
 interface FilePreviewProps {
   files: FileData[]
@@ -24,21 +24,25 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
 
   return (
     <div style={styles.filePreviewContainer}>
-      {files.map((file, index) => (
-        <div key={index} style={styles.filePreview}>
-          <div style={styles.fileInfo}>
-            <div style={styles.fileName}>🖼️ {file.name}</div>
-            <div style={styles.fileSize}>{formatFileSize(file.size)}</div>
+      {files.map((file, index) => {
+        const safeFileName = sanitizeFileName(file.name)
+
+        return (
+          <div key={index} style={styles.filePreview}>
+            <div style={styles.fileInfo}>
+              <div style={styles.fileName}>🖼️ {safeFileName}</div>
+              <div style={styles.fileSize}>{formatFileSize(file.size)}</div>
+            </div>
+            <button
+              onClick={() => onRemoveFile(index)}
+              style={styles.removeButton}
+              title="Remove file"
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={() => onRemoveFile(index)}
-            style={styles.removeButton}
-            title="Remove file"
-          >
-            ×
-          </button>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-} 
+}

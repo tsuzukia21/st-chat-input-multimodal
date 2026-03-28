@@ -57,6 +57,7 @@ function MultimodalChatInput({
     maxChars,
     acceptedFileTypes = [...DEFAULT_ACCEPTED_FILE_TYPES],
     maxFileSizeMb = DEFAULT_MAX_FILE_SIZE_MB,
+    maxFiles,
     enableVoiceInput = false,
     voiceRecognitionMethod = DEFAULT_VOICE_RECOGNITION_METHOD,
     voiceLanguage = DEFAULT_VOICE_LANGUAGE,
@@ -86,7 +87,8 @@ function MultimodalChatInput({
     clearFiles
   } = useFileUpload({
     acceptedFileTypes,
-    maxFileSizeMb
+    maxFileSizeMb,
+    maxFiles
   })
 
   // Voice recording hook

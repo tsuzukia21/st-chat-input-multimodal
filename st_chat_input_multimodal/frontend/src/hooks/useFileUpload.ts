@@ -5,12 +5,44 @@ import { processFiles } from '../utils/fileUtils'
 interface UseFileUploadProps {
   acceptedFileTypes: string[]
   maxFileSizeMb: number
+  maxFiles?: number
 }
 
-export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploadProps) => {
+export const useFileUpload = ({
+  acceptedFileTypes,
+  maxFileSizeMb,
+  maxFiles
+}: UseFileUploadProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([])
   const [isDragOver, setIsDragOver] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const addFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+
+    if (fileArray.length === 0) {
+      return
+    }
+
+    let filesToProcess = fileArray
+
+    if (maxFiles !== undefined) {
+      const remainingSlots = maxFiles - uploadedFiles.length
+
+      if (remainingSlots <= 0) {
+        alert(`File limit reached. Maximum ${maxFiles} files allowed.`)
+        return
+      }
+
+      if (fileArray.length > remainingSlots) {
+        alert(`Only ${remainingSlots} more file${remainingSlots === 1 ? '' : 's'} can be added.`)
+        filesToProcess = fileArray.slice(0, remainingSlots)
+      }
+    }
+
+    const newFiles = await processFiles(filesToProcess, acceptedFileTypes, maxFileSizeMb)
+    setUploadedFiles(prev => [...prev, ...newFiles])
+  }, [acceptedFileTypes, maxFileSizeMb, maxFiles, uploadedFiles.length])
 
   /**
    * + button click - open file explorer
@@ -25,12 +57,11 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
   const handleFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-      setUploadedFiles(prev => [...prev, ...newFiles])
+      await addFiles(files)
     }
     // Reset file input (enable reselection of same file)
     e.target.value = ''
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * Drag & drop related event handlers
@@ -54,10 +85,9 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
 
     const files = e.dataTransfer.files
     if (files.length > 0) {
-      const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-      setUploadedFiles(prev => [...prev, ...newFiles])
+      await addFiles(files)
     }
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * Clipboard paste handler (Ctrl+V)
@@ -82,11 +112,10 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
       }
       
       if (files.length > 0) {
-        const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-        setUploadedFiles(prev => [...prev, ...newFiles])
+        await addFiles(files)
       }
     }
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * File removal handler
