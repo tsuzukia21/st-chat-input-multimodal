@@ -92,9 +92,9 @@
 
 ### 実装
 
-- [ ] T023 [US4] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` にuseEffectクリーンアップ関数を追加（MediaStream全トラック停止、clearInterval、MediaRecorder停止、audioChunksクリア）
-- [ ] T024 [US4] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` でSpeechRecognitionインスタンスのstop/abortをクリーンアップに追加
-- [ ] T025 [US4] `st_chat_input_multimodal/frontend/src/utils/errorUtils.ts` に本番ビルド判定によるconsole.error抑制ロジックを実装
+- [X] T023 [US4] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` にuseEffectクリーンアップ関数を追加（MediaStream全トラック停止、clearInterval、MediaRecorder停止、audioChunksクリア）
+- [X] T024 [US4] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` でSpeechRecognitionインスタンスのstop/abortをクリーンアップに追加
+- [X] T025 [US4] `st_chat_input_multimodal/frontend/src/utils/errorUtils.ts` に本番ビルド判定によるconsole.error抑制ロジックを実装
 
 **チェックポイント**: コンポーネントのマウント・アンマウントを繰り返してもリソースリークが発生しないこと
 

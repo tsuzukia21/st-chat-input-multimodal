@@ -54,14 +54,17 @@ export const useVoiceRecording = ({
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [recordingTime, setRecordingTime] = useState<number>(0)
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false)
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [audioMetadata, setAudioMetadata] = useState<AudioMetadata | null>(null)
   
   const recordingTimerRef = useRef<number | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimeRef = useRef<number>(0)
   const lastRecordingDurationRef = useRef<number>(0)
+  const discardRecordingRef = useRef<boolean>(false)
+  const isUnmountedRef = useRef<boolean>(false)
 
   const reportError = useCallback((
     message: string,
@@ -92,16 +95,129 @@ export const useVoiceRecording = ({
     setIsTranscribing(false)
   }, [voiceRecognitionMethod, transcriptionResult, voiceLanguage, onTextUpdate])
 
+  const clearAudioChunks = useCallback(() => {
+    audioChunksRef.current = []
+  }, [])
+
+  const releaseMediaStream = useCallback(() => {
+    if (!mediaStreamRef.current) {
+      return
+    }
+
+    mediaStreamRef.current.getTracks().forEach(track => track.stop())
+    mediaStreamRef.current = null
+  }, [])
+
+  /**
+   * Stop recording timer
+   */
+  const stopRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+  }, [])
+
+  const stopSpeechRecognition = useCallback((abort = false) => {
+    const recognition = recognitionRef.current
+    recognitionRef.current = null
+
+    if (!recognition) {
+      return
+    }
+
+    try {
+      recognition.stop()
+    } catch (error) {
+      logError('Voice recognition stop error', error)
+    }
+
+    if (!abort) {
+      return
+    }
+
+    try {
+      recognition.abort()
+    } catch (error) {
+      logError('Voice recognition abort error', error)
+    }
+  }, [])
+
+  const stopMediaRecorder = useCallback((discardRecording = false) => {
+    const recorder = mediaRecorderRef.current
+
+    if (!recorder) {
+      discardRecordingRef.current = false
+
+      if (discardRecording) {
+        clearAudioChunks()
+      }
+
+      releaseMediaStream()
+      return
+    }
+
+    discardRecordingRef.current = discardRecording
+
+    if (recorder.state === 'inactive') {
+      mediaRecorderRef.current = null
+      discardRecordingRef.current = false
+
+      if (discardRecording) {
+        clearAudioChunks()
+      }
+
+      releaseMediaStream()
+      return
+    }
+
+    try {
+      recorder.stop()
+    } catch (error) {
+      logError('MediaRecorder stop error', error)
+      mediaRecorderRef.current = null
+      discardRecordingRef.current = false
+
+      if (discardRecording) {
+        clearAudioChunks()
+      }
+
+      releaseMediaStream()
+    }
+  }, [clearAudioChunks, releaseMediaStream])
+
+  const stopCurrentRecording = useCallback((options?: {
+    abortRecognition?: boolean
+    discardRecording?: boolean
+    updateRecordingState?: boolean
+  }) => {
+    const {
+      abortRecognition = false,
+      discardRecording = false,
+      updateRecordingState = true,
+    } = options ?? {}
+
+    lastRecordingDurationRef.current = recordingTimeRef.current
+    stopRecordingTimer()
+    stopSpeechRecognition(abortRecognition)
+    stopMediaRecorder(discardRecording)
+
+    if (updateRecordingState && !isUnmountedRef.current) {
+      setIsRecording(false)
+    }
+  }, [stopMediaRecorder, stopRecordingTimer, stopSpeechRecognition])
+
   /**
    * Start recording timer
    */
   const startRecordingTimer = useCallback(() => {
+    stopRecordingTimer()
     setRecordingTime(0)
     recordingTimeRef.current = 0
     recordingTimerRef.current = window.setInterval(() => {
       setRecordingTime(prev => {
         if (prev >= maxRecordingTime) {
-          stopVoiceRecording()
+          stopCurrentRecording()
           return prev
         }
         const next = prev + 1
@@ -109,17 +225,19 @@ export const useVoiceRecording = ({
         return next
       })
     }, RECORDING_TIMER_INTERVAL_MS)
-  }, [maxRecordingTime])
+  }, [maxRecordingTime, stopCurrentRecording, stopRecordingTimer])
 
-  /**
-   * Stop recording timer
-   */
-  const stopRecordingTimer = useCallback(() => {
-    if (recordingTimerRef.current) {
-      window.clearInterval(recordingTimerRef.current)
-      recordingTimerRef.current = null
+  useEffect(() => {
+    return () => {
+      isUnmountedRef.current = true
+      stopCurrentRecording({
+        abortRecognition: true,
+        discardRecording: true,
+        updateRecordingState: false,
+      })
+      clearAudioChunks()
     }
-  }, [])
+  }, [clearAudioChunks, stopCurrentRecording])
 
   /**
    * Start voice recognition using Web Speech API
@@ -155,7 +273,7 @@ export const useVoiceRecording = ({
         setAudioMetadata({
           used_voice_input: true,
           transcription_method: "web_speech",
-          recording_duration: recordingTime,
+          recording_duration: recordingTimeRef.current,
           confidence: event.results[event.results.length - 1][0].confidence || undefined,
           language: voiceLanguage
         })
@@ -174,33 +292,40 @@ export const useVoiceRecording = ({
     try {
       recognition.start()
     } catch (error) {
+      recognitionRef.current = null
       logError('Voice recognition start error', error)
       reportError('Voice recognition failed. Please try again.')
     }
-  }, [voiceLanguage, recordingTime, onTextUpdate, reportError])
+  }, [voiceLanguage, onTextUpdate, reportError])
 
   /**
    * Handle recording completion
    */
   const handleRecordingComplete = useCallback(async (mimeType?: string) => {
-    if (voiceRecognitionMethod === "openai_whisper" && audioChunksRef.current.length > 0) {
-      setIsTranscribing(true)
-      
-      try {
-        await sendAudioForTranscription(
-          audioChunksRef.current,
-          voiceLanguage,
-          mimeType
-        )
-
-        audioChunksRef.current = []
-      } catch (error) {
-        setIsTranscribing(false)
-        logError('Audio transcription request error', error)
-        reportError('Transcription failed. Please try again.')
-      }
+    if (voiceRecognitionMethod !== "openai_whisper" || audioChunksRef.current.length === 0) {
+      clearAudioChunks()
+      return
     }
-  }, [voiceRecognitionMethod, voiceLanguage, reportError])
+
+    const audioChunks = [...audioChunksRef.current]
+    setIsTranscribing(true)
+    
+    try {
+      await sendAudioForTranscription(
+        audioChunks,
+        voiceLanguage,
+        mimeType
+      )
+
+      clearAudioChunks()
+    } catch (error) {
+      if (!isUnmountedRef.current) {
+        setIsTranscribing(false)
+      }
+      logError('Audio transcription request error', error)
+      reportError('Transcription failed. Please try again.')
+    }
+  }, [clearAudioChunks, voiceRecognitionMethod, voiceLanguage, reportError])
 
   /**
    * Start voice recording
@@ -217,11 +342,16 @@ export const useVoiceRecording = ({
 
     onClearError?.()
 
+    let stream: MediaStream | null = null
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
       
       const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
+      mediaRecorderRef.current = recorder
+      discardRecordingRef.current = false
+      clearAudioChunks()
       
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -230,11 +360,18 @@ export const useVoiceRecording = ({
       }
       
       recorder.onstop = () => {
-        stream.getTracks().forEach(track => track.stop())
-        handleRecordingComplete(recorder.mimeType)
+        releaseMediaStream()
+        mediaRecorderRef.current = null
+
+        if (discardRecordingRef.current) {
+          discardRecordingRef.current = false
+          clearAudioChunks()
+          return
+        }
+
+        void handleRecordingComplete(recorder.mimeType)
       }
       
-      setMediaRecorder(recorder)
       recorder.start()
       setIsRecording(true)
       startRecordingTimer()
@@ -245,28 +382,34 @@ export const useVoiceRecording = ({
       }
       
     } catch (error) {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+      }
+      if (mediaStreamRef.current === stream) {
+        mediaStreamRef.current = null
+      }
+      mediaRecorderRef.current = null
+      clearAudioChunks()
       logError('Microphone access error', error)
       reportError('Microphone access is not permitted. Please check your browser settings.')
     }
-  }, [voiceRecognitionMethod, onClearError, reportError, startRecordingTimer, startWebSpeechRecognition, handleRecordingComplete])
+  }, [
+    voiceRecognitionMethod,
+    onClearError,
+    reportError,
+    startRecordingTimer,
+    startWebSpeechRecognition,
+    handleRecordingComplete,
+    clearAudioChunks,
+    releaseMediaStream,
+  ])
 
   /**
    * Stop voice recording
    */
   const stopVoiceRecording = useCallback(() => {
-    lastRecordingDurationRef.current = recordingTimeRef.current
-
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop()
-    }
-    
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-    }
-    
-    setIsRecording(false)
-    stopRecordingTimer()
-  }, [mediaRecorder, stopRecordingTimer])
+    stopCurrentRecording()
+  }, [stopCurrentRecording])
 
   /**
    * Voice button click handler
