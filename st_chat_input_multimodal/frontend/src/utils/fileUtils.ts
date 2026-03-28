@@ -1,4 +1,5 @@
 import { FileData } from '../types'
+import { logError } from './errorUtils'
 
 const MAGIC_BYTE_READ_LENGTH = 12
 
@@ -131,7 +132,8 @@ export const formatFileSize = (bytes: number): string => {
 export const processFiles = async (
   files: FileList | File[],
   acceptedFileTypes: string[],
-  maxFileSizeMb: number
+  maxFileSizeMb: number,
+  onError?: (message: string) => void
 ): Promise<FileData[]> => {
   const fileArray = Array.from(files)
   const newFiles: FileData[] = []
@@ -139,7 +141,7 @@ export const processFiles = async (
   for (const file of fileArray) {
     const error = await validateFile(file, acceptedFileTypes, maxFileSizeMb)
     if (error) {
-      alert(error)
+      onError?.(error)
       continue
     }
 
@@ -152,10 +154,10 @@ export const processFiles = async (
         data: base64Data
       })
     } catch (error) {
-      console.error('File reading error:', error)
-      alert(`Failed to read file "${file.name}"`)
+      logError('File reading error', error)
+      onError?.(`Failed to read file "${sanitizeFileName(file.name)}".`)
     }
   }
 
   return newFiles
-} 
+}

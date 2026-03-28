@@ -76,9 +76,9 @@
 - [X] T017 [P] [US3] `st_chat_input_multimodal/frontend/src/utils/audioUtils.ts` の戻り値型 `any` を適切な型に置換（line 20）
 - [X] T018 [US3] `st_chat_input_multimodal/frontend/src/MyComponent.tsx` のマジックナンバー（46px, 40px, 45px, 320px, 400px, 5px, 100ms, 150ms等）を `constants.ts` の定数参照に置換
 - [X] T019 [US3] `st_chat_input_multimodal/frontend/src/hooks/useStyles.ts` のマジックナンバーを `constants.ts` の定数参照に置換
-- [ ] T020 [US3] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` の `alert()` 呼び出し（lines 99, 178）をErrorMessageコンポーネント連携に置換
-- [ ] T021 [US3] `st_chat_input_multimodal/frontend/src/utils/fileUtils.ts` の `alert()` 呼び出し（line 77）をエラーコールバック方式に置換
-- [ ] T022 [US3] `st_chat_input_multimodal/frontend/src/MyComponent.tsx` にErrorMessageコンポーネントを統合し、エラーステート管理を追加
+- [X] T020 [US3] `st_chat_input_multimodal/frontend/src/hooks/useVoiceRecording.ts` の `alert()` 呼び出し（lines 99, 178）をErrorMessageコンポーネント連携に置換
+- [X] T021 [US3] `st_chat_input_multimodal/frontend/src/utils/fileUtils.ts` の `alert()` 呼び出し（line 77）をエラーコールバック方式に置換
+- [X] T022 [US3] `st_chat_input_multimodal/frontend/src/MyComponent.tsx` にErrorMessageコンポーネントを統合し、エラーステート管理を追加
 
 **チェックポイント**: `npx tsc --noEmit` が成功し、プロダクションコードにany型・マジックナンバー・alert()が存在しないこと
 

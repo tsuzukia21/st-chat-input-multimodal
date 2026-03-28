@@ -16,7 +16,8 @@ import {
   DEFAULT_VOICE_RECOGNITION_METHOD,
   FRAME_HEIGHT,
 } from './constants'
-import { ComponentArgs, ComponentResult, RawComponentArgs } from './types'
+import { ComponentArgs, ComponentResult, ErrorState, RawComponentArgs } from './types'
+import { ErrorMessage } from './components/ErrorMessage'
 
 // Import hooks
 import { useFileUpload } from './hooks/useFileUpload'
@@ -70,9 +71,18 @@ function MultimodalChatInput({
   // Component state
   const [inputText, setInputText] = useState<string>("")
   const [isFocused, setIsFocused] = useState<boolean>(false)
+  const [error, setError] = useState<ErrorState | null>(null)
   const [textAreaHeight, setTextAreaHeight] = useState<number>(FRAME_HEIGHT.minTextArea)
   const [frameHeightUpdateTimer, setFrameHeightUpdateTimer] = useState<number | null>(null)
   const [lastFrameHeight, setLastFrameHeight] = useState<number>(0) // 前回のフレーム高さを記録
+
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  const handleError = useCallback((nextError: ErrorState) => {
+    setError(nextError)
+  }, [])
 
   // File upload hook
   const {
@@ -90,7 +100,9 @@ function MultimodalChatInput({
   } = useFileUpload({
     acceptedFileTypes,
     maxFileSizeMb,
-    maxFiles
+    maxFiles,
+    onError: handleError,
+    onClearError: clearError,
   })
 
   // Voice recording hook
@@ -100,8 +112,11 @@ function MultimodalChatInput({
     maxRecordingTime,
     transcriptionResult,
     onTextUpdate: (text: string) => {
+      clearError()
       setInputText(prev => prev + text)
-    }
+    },
+    onError: handleError,
+    onClearError: clearError,
   })
   const hasContent = inputText.trim().length > 0 || uploadedFiles.length > 0
   const isSubmitDisabled =
@@ -188,8 +203,9 @@ function MultimodalChatInput({
       return
     }
     
+    clearError()
     setInputText(value)
-  }, [maxChars])
+  }, [clearError, maxChars])
 
   /**
    * Send button click handler
@@ -210,6 +226,7 @@ function MultimodalChatInput({
     // Clear input
     setInputText("")
     clearFiles()
+    clearError()
     voiceHook.clearAudioMetadata()
     
     // 高さを確実にリセット
@@ -221,7 +238,7 @@ function MultimodalChatInput({
       const minFrameHeight = FRAME_HEIGHT.base + FRAME_HEIGHT.minTextArea
       Streamlit.setFrameHeight(minFrameHeight)
     }, FRAME_HEIGHT.resetDelayMs)
-  }, [inputText, uploadedFiles, voiceHook.audioMetadata, isSubmitDisabled, clearFiles, voiceHook.clearAudioMetadata])
+  }, [inputText, uploadedFiles, voiceHook.audioMetadata, isSubmitDisabled, clearError, clearFiles, voiceHook.clearAudioMetadata])
 
   /**
    * Keyboard event handler (Enter to send)
@@ -254,6 +271,8 @@ function MultimodalChatInput({
 
   return (
     <div style={styles.outerContainer}>
+      <ErrorMessage error={error} onDismiss={clearError} />
+
       {/* File preview area */}
       <FilePreview
         files={uploadedFiles}

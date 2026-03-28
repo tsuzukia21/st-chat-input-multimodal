@@ -1,21 +1,33 @@
 import { useState, useRef, useCallback, DragEvent, ChangeEvent, ClipboardEvent } from 'react'
-import { FileData } from '../types'
+import { ErrorState, FileData } from '../types'
 import { processFiles } from '../utils/fileUtils'
+import { createErrorState } from '../utils/errorUtils'
 
 interface UseFileUploadProps {
   acceptedFileTypes: string[]
   maxFileSizeMb: number
   maxFiles?: number
+  onError?: (error: ErrorState) => void
+  onClearError?: () => void
 }
 
 export const useFileUpload = ({
   acceptedFileTypes,
   maxFileSizeMb,
-  maxFiles
+  maxFiles,
+  onError,
+  onClearError,
 }: UseFileUploadProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([])
   const [isDragOver, setIsDragOver] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const reportError = useCallback((
+    message: string,
+    type: ErrorState['type'] = 'error'
+  ) => {
+    onError?.(createErrorState(message, type))
+  }, [onError])
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files)
@@ -24,25 +36,35 @@ export const useFileUpload = ({
       return
     }
 
+    onClearError?.()
+
     let filesToProcess = fileArray
 
     if (maxFiles !== undefined) {
       const remainingSlots = maxFiles - uploadedFiles.length
 
       if (remainingSlots <= 0) {
-        alert(`File limit reached. Maximum ${maxFiles} files allowed.`)
+        reportError(`File limit reached. Maximum ${maxFiles} files allowed.`, 'warning')
         return
       }
 
       if (fileArray.length > remainingSlots) {
-        alert(`Only ${remainingSlots} more file${remainingSlots === 1 ? '' : 's'} can be added.`)
+        reportError(
+          `Only ${remainingSlots} more file${remainingSlots === 1 ? '' : 's'} can be added.`,
+          'warning'
+        )
         filesToProcess = fileArray.slice(0, remainingSlots)
       }
     }
 
-    const newFiles = await processFiles(filesToProcess, acceptedFileTypes, maxFileSizeMb)
+    const newFiles = await processFiles(
+      filesToProcess,
+      acceptedFileTypes,
+      maxFileSizeMb,
+      (message) => reportError(message)
+    )
     setUploadedFiles(prev => [...prev, ...newFiles])
-  }, [acceptedFileTypes, maxFileSizeMb, maxFiles, uploadedFiles.length])
+  }, [acceptedFileTypes, maxFileSizeMb, maxFiles, onClearError, reportError, uploadedFiles.length])
 
   /**
    * + button click - open file explorer

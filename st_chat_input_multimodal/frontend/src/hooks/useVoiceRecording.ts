@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   AudioMetadata,
+  ErrorState,
   SpeechRecognitionErrorEventLike,
   SpeechRecognitionEventLike,
   SpeechRecognitionLike,
   VoiceRecognitionMethod,
 } from '../types'
 import { RECORDING_TIMER_INTERVAL_MS } from '../constants'
+import { createErrorState, logError } from '../utils/errorUtils'
 import { 
   checkWebSpeechSupport, 
   getSpeechRecognition, 
@@ -20,6 +22,24 @@ interface UseVoiceRecordingProps {
   maxRecordingTime: number
   transcriptionResult?: string
   onTextUpdate: (text: string) => void
+  onError?: (error: ErrorState) => void
+  onClearError?: () => void
+}
+
+const getSpeechRecognitionErrorMessage = (error: string): string => {
+  switch (error) {
+    case 'audio-capture':
+      return 'No microphone was detected. Please check your device settings.'
+    case 'network':
+      return 'Voice recognition is temporarily unavailable. Please try again.'
+    case 'no-speech':
+      return 'No speech was detected. Please try again.'
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Microphone access is not permitted. Please check your browser settings.'
+    default:
+      return 'Voice recognition failed. Please try again.'
+  }
 }
 
 export const useVoiceRecording = ({
@@ -27,7 +47,9 @@ export const useVoiceRecording = ({
   voiceLanguage,
   maxRecordingTime,
   transcriptionResult,
-  onTextUpdate
+  onTextUpdate,
+  onError,
+  onClearError,
 }: UseVoiceRecordingProps) => {
   const [isRecording, setIsRecording] = useState<boolean>(false)
   const [recordingTime, setRecordingTime] = useState<number>(0)
@@ -40,6 +62,13 @@ export const useVoiceRecording = ({
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimeRef = useRef<number>(0)
   const lastRecordingDurationRef = useRef<number>(0)
+
+  const reportError = useCallback((
+    message: string,
+    type: ErrorState['type'] = 'error'
+  ) => {
+    onError?.(createErrorState(message, type))
+  }, [onError])
 
   useEffect(() => {
     recordingTimeRef.current = recordingTime
@@ -96,10 +125,16 @@ export const useVoiceRecording = ({
    * Start voice recognition using Web Speech API
    */
   const startWebSpeechRecognition = useCallback(() => {
-    if (!checkWebSpeechSupport()) return
+    if (!checkWebSpeechSupport()) {
+      reportError('Voice input is not supported in this browser.', 'warning')
+      return
+    }
     
     const SpeechRecognition = getSpeechRecognition()
-    if (!SpeechRecognition) return
+    if (!SpeechRecognition) {
+      reportError('Voice input is not supported in this browser.', 'warning')
+      return
+    }
     
     const recognition = new SpeechRecognition()
     recognition.continuous = true
@@ -128,15 +163,21 @@ export const useVoiceRecording = ({
     }
     
     recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
-      console.error('Voice recognition error:', event.error)
       if (event.error !== 'aborted') {
-        alert(`Voice recognition error: ${event.error}`)
+        logError('Voice recognition error', event.error)
+        reportError(getSpeechRecognitionErrorMessage(event.error))
       }
     }
     
     recognitionRef.current = recognition
-    recognition.start()
-  }, [voiceLanguage, recordingTime, onTextUpdate])
+
+    try {
+      recognition.start()
+    } catch (error) {
+      logError('Voice recognition start error', error)
+      reportError('Voice recognition failed. Please try again.')
+    }
+  }, [voiceLanguage, recordingTime, onTextUpdate, reportError])
 
   /**
    * Handle recording completion
@@ -155,16 +196,27 @@ export const useVoiceRecording = ({
         audioChunksRef.current = []
       } catch (error) {
         setIsTranscribing(false)
-        console.error('Audio transcription request error:', error)
-        alert('Transcription failed. Please try again.')
+        logError('Audio transcription request error', error)
+        reportError('Transcription failed. Please try again.')
       }
     }
-  }, [voiceRecognitionMethod, voiceLanguage])
+  }, [voiceRecognitionMethod, voiceLanguage, reportError])
 
   /**
    * Start voice recording
    */
   const startVoiceRecording = useCallback(async () => {
+    if (voiceRecognitionMethod === 'web_speech') {
+      const SpeechRecognition = getSpeechRecognition()
+
+      if (!checkWebSpeechSupport() || !SpeechRecognition) {
+        reportError('Voice input is not supported in this browser.', 'warning')
+        return
+      }
+    }
+
+    onClearError?.()
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       
@@ -193,10 +245,10 @@ export const useVoiceRecording = ({
       }
       
     } catch (error) {
-      console.error('Microphone access error:', error)
-      alert('Microphone access is not permitted. Please check your browser settings.')
+      logError('Microphone access error', error)
+      reportError('Microphone access is not permitted. Please check your browser settings.')
     }
-  }, [voiceRecognitionMethod, startRecordingTimer, startWebSpeechRecognition, handleRecordingComplete])
+  }, [voiceRecognitionMethod, onClearError, reportError, startRecordingTimer, startWebSpeechRecognition, handleRecordingComplete])
 
   /**
    * Stop voice recording
