@@ -1,16 +1,87 @@
 import { FileData } from '../types'
+import { logError } from './errorUtils'
+
+const MAGIC_BYTE_READ_LENGTH = 12
+
+type SupportedImageType = 'jpeg' | 'png' | 'gif' | 'webp'
+
+const normalizeFileType = (fileType: string): SupportedImageType | null => {
+  const normalizedType = fileType.trim().toLowerCase()
+
+  if (normalizedType === 'jpg' || normalizedType === 'jpeg') {
+    return 'jpeg'
+  }
+
+  if (normalizedType === 'png' || normalizedType === 'gif' || normalizedType === 'webp') {
+    return normalizedType
+  }
+
+  return null
+}
+
+const isJpeg = (bytes: Uint8Array): boolean =>
+  bytes.length >= 3 &&
+  bytes[0] === 0xFF &&
+  bytes[1] === 0xD8 &&
+  bytes[2] === 0xFF
+
+const isPng = (bytes: Uint8Array): boolean =>
+  bytes.length >= 4 &&
+  bytes[0] === 0x89 &&
+  bytes[1] === 0x50 &&
+  bytes[2] === 0x4E &&
+  bytes[3] === 0x47
+
+const isGif = (bytes: Uint8Array): boolean =>
+  bytes.length >= 3 &&
+  bytes[0] === 0x47 &&
+  bytes[1] === 0x49 &&
+  bytes[2] === 0x46
+
+const isWebp = (bytes: Uint8Array): boolean =>
+  bytes.length >= 12 &&
+  bytes[0] === 0x52 &&
+  bytes[1] === 0x49 &&
+  bytes[2] === 0x46 &&
+  bytes[3] === 0x46 &&
+  bytes[8] === 0x57 &&
+  bytes[9] === 0x45 &&
+  bytes[10] === 0x42 &&
+  bytes[11] === 0x50
+
+export const detectFileTypeFromMagicBytes = async (file: File): Promise<SupportedImageType | null> => {
+  const buffer = await file.slice(0, MAGIC_BYTE_READ_LENGTH).arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+
+  if (isJpeg(bytes)) return 'jpeg'
+  if (isPng(bytes)) return 'png'
+  if (isGif(bytes)) return 'gif'
+  if (isWebp(bytes)) return 'webp'
+
+  return null
+}
+
+export const sanitizeFileName = (fileName: string): string =>
+  fileName.replace(/[<>"'&/\\\u0000]/g, '')
 
 /**
  * Validate file size and type
  */
-export const validateFile = (
+export const validateFile = async (
   file: File,
   acceptedFileTypes: string[],
   maxFileSizeMb: number
-): string | null => {
+): Promise<string | null> => {
   // File type check
   const fileExtension = file.name.split('.').pop()?.toLowerCase()
-  if (!fileExtension || !acceptedFileTypes.includes(fileExtension)) {
+  const normalizedExtension = fileExtension ? normalizeFileType(fileExtension) : null
+  const acceptedTypes = new Set(
+    acceptedFileTypes
+      .map(normalizeFileType)
+      .filter((fileType): fileType is SupportedImageType => fileType !== null)
+  )
+
+  if (!normalizedExtension || !acceptedTypes.has(normalizedExtension)) {
     return `Unsupported file format. Supported formats: ${acceptedFileTypes.join(', ')}`
   }
 
@@ -18,6 +89,15 @@ export const validateFile = (
   const maxSizeBytes = maxFileSizeMb * 1024 * 1024
   if (file.size > maxSizeBytes) {
     return `File size exceeds limit. Maximum size: ${maxFileSizeMb}MB`
+  }
+
+  const detectedFileType = await detectFileTypeFromMagicBytes(file)
+  if (!detectedFileType) {
+    return `Unsupported file format. Supported formats: ${acceptedFileTypes.join(', ')}`
+  }
+
+  if (detectedFileType !== normalizedExtension) {
+    return 'File content does not match the file extension.'
   }
 
   return null
@@ -52,15 +132,16 @@ export const formatFileSize = (bytes: number): string => {
 export const processFiles = async (
   files: FileList | File[],
   acceptedFileTypes: string[],
-  maxFileSizeMb: number
+  maxFileSizeMb: number,
+  onError?: (message: string) => void
 ): Promise<FileData[]> => {
   const fileArray = Array.from(files)
   const newFiles: FileData[] = []
 
   for (const file of fileArray) {
-    const error = validateFile(file, acceptedFileTypes, maxFileSizeMb)
+    const error = await validateFile(file, acceptedFileTypes, maxFileSizeMb)
     if (error) {
-      alert(error)
+      onError?.(error)
       continue
     }
 
@@ -73,10 +154,10 @@ export const processFiles = async (
         data: base64Data
       })
     } catch (error) {
-      console.error('File reading error:', error)
-      alert(`Failed to read file "${file.name}"`)
+      logError('File reading error', error)
+      onError?.(`Failed to read file "${sanitizeFileName(file.name)}".`)
     }
   }
 
   return newFiles
-} 
+}

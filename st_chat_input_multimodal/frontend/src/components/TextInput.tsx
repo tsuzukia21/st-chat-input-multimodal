@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react'
+import React, { useRef, useEffect, KeyboardEvent, ChangeEvent, ClipboardEvent } from 'react'
 
 interface TextInputProps {
   value: string

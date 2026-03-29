@@ -1,16 +1,70 @@
 import { useState, useRef, useCallback, DragEvent, ChangeEvent, ClipboardEvent } from 'react'
-import { FileData } from '../types'
+import { ErrorState, FileData } from '../types'
 import { processFiles } from '../utils/fileUtils'
+import { createErrorState } from '../utils/errorUtils'
 
 interface UseFileUploadProps {
   acceptedFileTypes: string[]
   maxFileSizeMb: number
+  maxFiles?: number
+  onError?: (error: ErrorState) => void
+  onClearError?: () => void
 }
 
-export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploadProps) => {
+export const useFileUpload = ({
+  acceptedFileTypes,
+  maxFileSizeMb,
+  maxFiles,
+  onError,
+  onClearError,
+}: UseFileUploadProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([])
   const [isDragOver, setIsDragOver] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const reportError = useCallback((
+    message: string,
+    type: ErrorState['type'] = 'error'
+  ) => {
+    onError?.(createErrorState(message, type))
+  }, [onError])
+
+  const addFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+
+    if (fileArray.length === 0) {
+      return
+    }
+
+    onClearError?.()
+
+    let filesToProcess = fileArray
+
+    if (maxFiles !== undefined) {
+      const remainingSlots = maxFiles - uploadedFiles.length
+
+      if (remainingSlots <= 0) {
+        reportError(`File limit reached. Maximum ${maxFiles} files allowed.`, 'warning')
+        return
+      }
+
+      if (fileArray.length > remainingSlots) {
+        reportError(
+          `Only ${remainingSlots} more file${remainingSlots === 1 ? '' : 's'} can be added.`,
+          'warning'
+        )
+        filesToProcess = fileArray.slice(0, remainingSlots)
+      }
+    }
+
+    const newFiles = await processFiles(
+      filesToProcess,
+      acceptedFileTypes,
+      maxFileSizeMb,
+      (message) => reportError(message)
+    )
+    setUploadedFiles(prev => [...prev, ...newFiles])
+  }, [acceptedFileTypes, maxFileSizeMb, maxFiles, onClearError, reportError, uploadedFiles.length])
 
   /**
    * + button click - open file explorer
@@ -25,12 +79,11 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
   const handleFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-      setUploadedFiles(prev => [...prev, ...newFiles])
+      await addFiles(files)
     }
     // Reset file input (enable reselection of same file)
     e.target.value = ''
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * Drag & drop related event handlers
@@ -54,10 +107,9 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
 
     const files = e.dataTransfer.files
     if (files.length > 0) {
-      const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-      setUploadedFiles(prev => [...prev, ...newFiles])
+      await addFiles(files)
     }
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * Clipboard paste handler (Ctrl+V)
@@ -82,11 +134,10 @@ export const useFileUpload = ({ acceptedFileTypes, maxFileSizeMb }: UseFileUploa
       }
       
       if (files.length > 0) {
-        const newFiles = await processFiles(files, acceptedFileTypes, maxFileSizeMb)
-        setUploadedFiles(prev => [...prev, ...newFiles])
+        await addFiles(files)
       }
     }
-  }, [acceptedFileTypes, maxFileSizeMb])
+  }, [addFiles])
 
   /**
    * File removal handler
