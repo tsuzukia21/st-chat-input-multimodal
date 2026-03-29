@@ -21,6 +21,7 @@ interface UseVoiceRecordingProps {
   voiceLanguage: string
   maxRecordingTime: number
   transcriptionResult?: string
+  transcriptionError?: string
   onTextUpdate: (text: string) => void
   onError?: (error: ErrorState) => void
   onClearError?: () => void
@@ -47,6 +48,7 @@ export const useVoiceRecording = ({
   voiceLanguage,
   maxRecordingTime,
   transcriptionResult,
+  transcriptionError,
   onTextUpdate,
   onError,
   onClearError,
@@ -78,11 +80,18 @@ export const useVoiceRecording = ({
   }, [recordingTime])
 
   useEffect(() => {
-    if (voiceRecognitionMethod !== 'openai_whisper' || transcriptionResult === undefined) {
+    if (transcriptionResult === undefined && transcriptionError === undefined) {
+      return
+    }
+
+    if (transcriptionError) {
+      reportError(transcriptionError)
+      setIsTranscribing(false)
       return
     }
 
     if (transcriptionResult) {
+      onClearError?.()
       onTextUpdate(transcriptionResult)
       setAudioMetadata({
         used_voice_input: true,
@@ -93,7 +102,14 @@ export const useVoiceRecording = ({
     }
 
     setIsTranscribing(false)
-  }, [voiceRecognitionMethod, transcriptionResult, voiceLanguage, onTextUpdate])
+  }, [
+    transcriptionResult,
+    transcriptionError,
+    voiceLanguage,
+    onTextUpdate,
+    onClearError,
+    reportError,
+  ])
 
   const clearAudioChunks = useCallback(() => {
     audioChunksRef.current = []

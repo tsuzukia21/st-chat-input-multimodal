@@ -76,6 +76,17 @@ result = multimodal_chat_input(
 )
 ```
 
+#### Voice Transcription Error Handling
+
+Runtime voice-transcription failures are converted into user-safe inline messages instead of exposing raw backend exception details.
+
+- `Voice transcription is not available in this app.`: Whisper is not available for the current app configuration.
+- `Recorded audio could not be processed. Please try recording again.`: The recorded audio payload was invalid or unreadable.
+- `Voice transcription is temporarily unavailable. Please try again.`: Temporary API or network issue.
+- `Voice transcription failed. Please try again.`: Final fallback for unexpected runtime errors.
+
+Developer-facing parameter validation still raises `ValueError` during `multimodal_chat_input(...)` initialization so configuration mistakes fail fast.
+
 ### Custom Configuration
 
 ```python

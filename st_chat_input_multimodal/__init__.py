@@ -1,6 +1,7 @@
 import base64
 import binascii
 import hashlib
+import logging
 import os
 from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple
@@ -29,6 +30,19 @@ _AUDIO_FILENAME_BY_MIME_TYPE = {
     "audio/x-m4a": "recording.m4a",
     "audio/x-wav": "recording.wav",
 }
+_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE = "Voice transcription is not available in this app."
+_TRANSCRIPTION_INVALID_AUDIO_MESSAGE = (
+    "Recorded audio could not be processed. Please try recording again."
+)
+_TRANSCRIPTION_TEMPORARY_FAILURE_MESSAGE = (
+    "Voice transcription is temporarily unavailable. Please try again."
+)
+_TRANSCRIPTION_FALLBACK_MESSAGE = "Voice transcription failed. Please try again."
+_TRANSCRIPTION_INVALID_AUDIO_STATUS_CODES = {400, 413, 415, 422}
+_TRANSCRIPTION_NOT_AVAILABLE_STATUS_CODES = {401, 403, 404}
+_TRANSCRIPTION_TEMPORARY_STATUS_CODES = {408, 409, 429}
+
+_LOGGER = logging.getLogger(__name__)
 
 # Declare a Streamlit component. `declare_component` returns a function
 # that is used to create instances of the component. We're naming this
@@ -77,7 +91,7 @@ def _get_transcription_request_fingerprint(request: Dict[str, Any]) -> str:
 
     audio_data = request.get("audio_data")
     if not isinstance(audio_data, str) or not audio_data:
-        raise ValueError("audio_data is required for transcription")
+        return hashlib.sha256(repr(request).encode("utf-8")).hexdigest()
 
     return hashlib.sha256(audio_data.encode("utf-8")).hexdigest()
 
@@ -122,6 +136,54 @@ def _transcribe_audio(
     )
 
     return response.text.strip()
+
+
+def _get_transcription_error_message(exc: Exception) -> str:
+    if isinstance(exc, ValueError):
+        return _TRANSCRIPTION_INVALID_AUDIO_MESSAGE
+
+    if isinstance(exc, (ImportError, ModuleNotFoundError)):
+        return _TRANSCRIPTION_NOT_AVAILABLE_MESSAGE
+
+    status_code = getattr(exc, "status_code", None)
+    if status_code in _TRANSCRIPTION_INVALID_AUDIO_STATUS_CODES:
+        return _TRANSCRIPTION_INVALID_AUDIO_MESSAGE
+
+    if status_code in _TRANSCRIPTION_NOT_AVAILABLE_STATUS_CODES:
+        return _TRANSCRIPTION_NOT_AVAILABLE_MESSAGE
+
+    if status_code in _TRANSCRIPTION_TEMPORARY_STATUS_CODES:
+        return _TRANSCRIPTION_TEMPORARY_FAILURE_MESSAGE
+
+    if isinstance(status_code, int) and status_code >= 500:
+        return _TRANSCRIPTION_TEMPORARY_FAILURE_MESSAGE
+
+    if isinstance(exc, (ConnectionError, TimeoutError, OSError)):
+        return _TRANSCRIPTION_TEMPORARY_FAILURE_MESSAGE
+
+    return _TRANSCRIPTION_FALLBACK_MESSAGE
+
+
+def _set_transcription_feedback(
+    *,
+    processed_request_key: str,
+    request_fingerprint: str,
+    transcription_result_key: str,
+    transcription_error_key: str,
+    transcription_result: Optional[str] = None,
+    transcription_error: Optional[str] = None,
+) -> None:
+    st.session_state[processed_request_key] = request_fingerprint
+
+    if transcription_result is None:
+        st.session_state.pop(transcription_result_key, None)
+    else:
+        st.session_state[transcription_result_key] = transcription_result
+
+    if transcription_error is None:
+        st.session_state.pop(transcription_error_key, None)
+    else:
+        st.session_state[transcription_error_key] = transcription_error
 
 
 def _is_positive_integer(value: Any) -> bool:
@@ -257,8 +319,10 @@ def multimodal_chat_input(
     # Key to track previous value
     last_value_key = f"_last_multimodal_value_{key}"
     transcription_result_key = _build_session_state_key(key, "transcription_result")
+    transcription_error_key = _build_session_state_key(key, "transcription_error")
     processed_request_key = _build_session_state_key(key, "processed_transcription")
     transcription_result = st.session_state.pop(transcription_result_key, None)
+    transcription_error = st.session_state.pop(transcription_error_key, None)
 
     # Always use st._bottom to fix to the bottom of the screen
     with st._bottom:
@@ -274,6 +338,7 @@ def multimodal_chat_input(
             voice_language=voice_language,
             max_recording_time=max_recording_time,
             transcription_result=transcription_result,
+            transcription_error=transcription_error,
             key=key,
             default=None
         )
@@ -289,16 +354,24 @@ def multimodal_chat_input(
             return None
 
         if voice_recognition_method != "openai_whisper":
-            raise ValueError(
-                "voice_recognition_method must be 'openai_whisper' for "
-                "transcription requests"
+            _set_transcription_feedback(
+                processed_request_key=processed_request_key,
+                request_fingerprint=request_fingerprint,
+                transcription_result_key=transcription_result_key,
+                transcription_error_key=transcription_error_key,
+                transcription_error=_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE,
             )
+            st.rerun()
 
         if not openai_api_key:
-            raise ValueError(
-                "openai_api_key is required when "
-                "voice_recognition_method is 'openai_whisper'"
+            _set_transcription_feedback(
+                processed_request_key=processed_request_key,
+                request_fingerprint=request_fingerprint,
+                transcription_result_key=transcription_result_key,
+                transcription_error_key=transcription_error_key,
+                transcription_error=_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE,
             )
+            st.rerun()
 
         try:
             transcription_text = _transcribe_audio(
@@ -307,10 +380,23 @@ def multimodal_chat_input(
                 openai_api_key=openai_api_key,
             )
         except Exception as exc:
-            raise RuntimeError("Audio transcription failed") from exc
+            _LOGGER.exception("Voice transcription failed")
+            _set_transcription_feedback(
+                processed_request_key=processed_request_key,
+                request_fingerprint=request_fingerprint,
+                transcription_result_key=transcription_result_key,
+                transcription_error_key=transcription_error_key,
+                transcription_error=_get_transcription_error_message(exc),
+            )
+            st.rerun()
 
-        st.session_state[processed_request_key] = request_fingerprint
-        st.session_state[transcription_result_key] = transcription_text
+        _set_transcription_feedback(
+            processed_request_key=processed_request_key,
+            request_fingerprint=request_fingerprint,
+            transcription_result_key=transcription_result_key,
+            transcription_error_key=transcription_error_key,
+            transcription_result=transcription_text,
+        )
         st.rerun()
 
     # Return the value only once when it changes

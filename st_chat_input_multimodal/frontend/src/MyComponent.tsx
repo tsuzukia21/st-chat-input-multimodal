@@ -41,6 +41,7 @@ const normalizeComponentArgs = (rawArgs: RawComponentArgs): ComponentArgs => ({
   voiceLanguage: rawArgs.voice_language,
   maxRecordingTime: rawArgs.max_recording_time,
   transcriptionResult: rawArgs.transcription_result,
+  transcriptionError: rawArgs.transcription_error,
 })
 
 /**
@@ -66,6 +67,7 @@ function MultimodalChatInput({
     voiceLanguage = DEFAULT_VOICE_LANGUAGE,
     maxRecordingTime = DEFAULT_MAX_RECORDING_TIME,
     transcriptionResult,
+    transcriptionError,
   } = normalizedArgs
 
   // Component state
@@ -111,6 +113,7 @@ function MultimodalChatInput({
     voiceLanguage,
     maxRecordingTime,
     transcriptionResult,
+    transcriptionError,
     onTextUpdate: (text: string) => {
       clearError()
       setInputText(prev => prev + text)

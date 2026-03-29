@@ -74,6 +74,17 @@ result = multimodal_chat_input(
 )
 ```
 
+#### 音声文字起こしエラーハンドリング
+
+実行時の音声文字起こし失敗は、バックエンド例外の詳細をそのまま見せず、インラインの安全なメッセージへ変換されます。
+
+- `Voice transcription is not available in this app.`: 現在のアプリ設定では Whisper 文字起こしを利用できない場合
+- `Recorded audio could not be processed. Please try recording again.`: 録音データが不正または読み取れなかった場合
+- `Voice transcription is temporarily unavailable. Please try again.`: API またはネットワークの一時的な失敗
+- `Voice transcription failed. Please try again.`: 想定外の実行時エラーに対する最終フォールバック
+
+一方で、`multimodal_chat_input(...)` 呼び出し時のパラメータバリデーションは、設定ミスを早く検知できるよう `ValueError` のまま維持しています。
+
 ### カスタム設定
 
 ```python
