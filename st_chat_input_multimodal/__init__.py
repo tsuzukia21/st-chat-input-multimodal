@@ -30,7 +30,9 @@ _AUDIO_FILENAME_BY_MIME_TYPE = {
     "audio/x-m4a": "recording.m4a",
     "audio/x-wav": "recording.wav",
 }
-_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE = "Voice transcription is not available in this app."
+_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE = (
+    "Voice transcription is not available in this app."
+)
 _TRANSCRIPTION_INVALID_AUDIO_MESSAGE = (
     "Recorded audio could not be processed. Please try recording again."
 )
@@ -65,8 +67,7 @@ else:
     parent_dir = os.path.dirname(os.path.abspath(__file__))
     build_dir = os.path.join(parent_dir, "frontend/build")
     _component_func = components.declare_component(
-        "st_chat_input_multimodal",
-        path=build_dir
+        "st_chat_input_multimodal", path=build_dir
     )
 
 
@@ -240,11 +241,11 @@ def multimodal_chat_input(
 ) -> Optional[Dict[str, Any]]:
     """
     Multimodal chat input component
-    
+
     Provides a chat input UI that supports text input, image file uploads, and voice input.
     Similar to st.chat_input, it returns a value once when submitted, then automatically returns None.
     This component is automatically pinned to the bottom of the page like st.chat_input.
-    
+
     Parameters
     ----------
     placeholder : str
@@ -273,7 +274,7 @@ def multimodal_chat_input(
         Maximum recording time in seconds
     key : str, optional
         Unique key for the component
-        
+
     Returns
     -------
     dict or None
@@ -283,7 +284,7 @@ def multimodal_chat_input(
             "files": [                      # Uploaded files
                 {
                     "name": str,            # File name
-                    "type": str,            # MIME type  
+                    "type": str,            # MIME type
                     "size": int,            # File size in bytes
                     "data": str             # base64 encoded file data
                 }
@@ -305,19 +306,19 @@ def multimodal_chat_input(
         max_recording_time=max_recording_time,
         voice_recognition_method=voice_recognition_method,
     )
-    
+
     # Check for OpenAI API key from environment variable if not provided
     if openai_api_key is None and voice_recognition_method == "openai_whisper":
         openai_api_key = os.getenv("OPENAI_API_KEY")
-    
+
     # Default accepted file types
     if accepted_file_types is None:
         accepted_file_types = _DEFAULT_ACCEPTED_FILE_TYPES.copy()
-    
-    # Track "previous value" to achieve 
+
+    # Track "previous value" to achieve
     if key is None:
         key = "multimodal_chat_input_default"
-    
+
     # Key to track previous value
     last_value_key = f"_last_multimodal_value_{key}"
     transcription_result_key = _build_session_state_key(key, "transcription_result")
@@ -328,7 +329,9 @@ def multimodal_chat_input(
     processed_request_key = _build_session_state_key(key, "processed_transcription")
     transcription_result = st.session_state.pop(transcription_result_key, None)
     transcription_error = st.session_state.pop(transcription_error_key, None)
-    transcription_feedback_id = st.session_state.pop(transcription_feedback_id_key, None)
+    transcription_feedback_id = st.session_state.pop(
+        transcription_feedback_id_key, None
+    )
 
     # Always use st._bottom to fix to the bottom of the screen
     with st._bottom:
@@ -347,7 +350,7 @@ def multimodal_chat_input(
             transcription_error=transcription_error,
             transcription_feedback_id=transcription_feedback_id,
             key=key,
-            default=None
+            default=None,
         )
 
     transcription_request = _get_transcription_request(component_value)
@@ -414,18 +417,18 @@ def multimodal_chat_input(
     if component_value is not None:
         # Compare with previous value (including timestamp to allow duplicate content)
         last_value = st.session_state.get(last_value_key, None)
-        
+
         # Return only when value has changed (timestamp ensures uniqueness)
         if component_value != last_value:
             st.session_state[last_value_key] = component_value
-            
+
             # Remove internal timestamp before returning to user
             result = component_value.copy()
-            if '_timestamp' in result:
-                del result['_timestamp']
+            if "_timestamp" in result:
+                del result["_timestamp"]
             return result
-        
+
         # Return None if same value
         return None
-    
+
     return None

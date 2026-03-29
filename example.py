@@ -4,16 +4,15 @@ from st_chat_input_multimodal import multimodal_chat_input
 
 # Page configuration
 st.set_page_config(
-    page_title="Multimodal Chat Input Demo",
-    page_icon="💬",
-    layout="wide"
+    page_title="Multimodal Chat Input Demo", page_icon="💬", layout="wide"
 )
 
 st.subheader("💭 Multimodal Chat Input Demo")
 st.markdown("Simulate a chat application with voice input and file upload.")
 
 with st.expander("Usage"):
-    st.code("""
+    st.code(
+        """
 import streamlit as st
 from st_chat_input_multimodal import multimodal_chat_input
 
@@ -43,10 +42,13 @@ if result:
             base64_data = file['data'].split(',')[1]
             image_bytes = base64.b64decode(base64_data)
             st.image(image_bytes, caption=file['name'])
-    """, language="python")
+    """,
+        language="python",
+    )
 
 with st.expander("API Specification"):
-    st.markdown("""
+    st.markdown(
+        """
     ```python
     multimodal_chat_input(
         placeholder="Enter message...",                  # Placeholder text
@@ -84,7 +86,8 @@ with st.expander("API Specification"):
         }
     }
     ```
-    """)
+    """
+    )
 
 
 # Manage history in session state
@@ -95,7 +98,9 @@ if "chat_history" not in st.session_state:
 chat_result = multimodal_chat_input(
     placeholder="Enter chat message...",
     enable_voice_input=True,  # Enable voice input for chat as well
-    key="chat_input"
+    key="chat_input",
+    voice_recognition_method="openai_whisper",  # or "openai_whisper"
+    voice_language="ja-JP",
 )
 if chat_result:
     st.session_state.chat_history.append(chat_result)
@@ -106,24 +111,31 @@ if st.session_state.chat_history:
         with st.chat_message("user"):
             if message.get("text"):
                 st.write(message["text"])
-            
+
             if message.get("files"):
                 for file in message["files"]:
                     try:
-                        base64_data = file['data'].split(',')[1] if ',' in file['data'] else file['data']
+                        base64_data = (
+                            file["data"].split(",")[1]
+                            if "," in file["data"]
+                            else file["data"]
+                        )
                         image_bytes = base64.b64decode(base64_data)
-                        st.image(image_bytes, caption=file['name'], width=200)
+                        st.image(image_bytes, caption=file["name"], width=200)
                     except:
                         st.write(f"📎 {file['name']}")
-            
+
             # Display voice input information
-            if message.get("audio_metadata") and message["audio_metadata"]["used_voice_input"]:
-                st.caption(f"🎤 Voice input ({message['audio_metadata']['transcription_method']})")
+            if (
+                message.get("audio_metadata")
+                and message["audio_metadata"]["used_voice_input"]
+            ):
+                st.caption(
+                    f"🎤 Voice input ({message['audio_metadata']['transcription_method']})"
+                )
 
 
 # Clear history
 if st.button("Clear History"):
     st.session_state.chat_history = []
     st.rerun()
-
-
