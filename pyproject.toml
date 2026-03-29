@@ -1,3 +1,59 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "st-chat-input-multimodal"
+dynamic = ["version"]
+description = "Streamlit multimodal chat input component with text, image, and voice support"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "tsuzukia21" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["streamlit", "component", "multimodal", "chat", "input", "image", "voice", "audio"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "openai>=1.0",
+    "streamlit>=1.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/tsuzukia21/st-chat-input-multimodal"
+Repository = "https://github.com/tsuzukia21/st-chat-input-multimodal"
+
+[dependency-groups]
+dev = [
+    "black>=22.0",
+    "flake8>=5.0",
+    "mypy>=1.0",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[tool.setuptools]
+packages = ["st_chat_input_multimodal"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+st_chat_input_multimodal = [
+    "frontend/build/*",
+    "frontend/build/assets/*",
+]
+
+[tool.setuptools.dynamic]
+version = { file = ["VERSION"] }
+
 [tool.black]
 line-length = 88
 target-version = ['py310']

@@ -37,8 +37,8 @@ flowchart LR
 
 ```bash
 pip install st-chat-input-multimodal   # from PyPI (example)
-# OR, from source
-pip install -e .
+# OR, for local development
+uv sync
 ```
 
 ---
@@ -224,7 +224,17 @@ multimodal_chat_input(
 
 ## 6  Development & Build
 
-Frontend uses **Vite + React 18 + TypeScript**.
+Python development uses **uv**, and the frontend uses **Vite + React 18 + TypeScript**.
+
+```bash
+# from the repository root
+uv sync
+uv run streamlit run example.py
+uv run pytest
+uv run black --check .
+uv run flake8 .
+uv run mypy st_chat_input_multimodal/
+```
 
 ```bash
 # inside st_chat_input_multimodal/frontend

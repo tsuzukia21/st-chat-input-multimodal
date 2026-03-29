@@ -37,8 +37,8 @@ flowchart LR
 
 ```bash
 pip install st-chat-input-multimodal
-# またはソースから
-pip install -e .
+# またはローカル開発用に
+uv sync
 ```
 
 ---
@@ -222,7 +222,17 @@ multimodal_chat_input(
 
 ## 6  開発とビルド
 
-フロントエンドは **Vite + React 18 + TypeScript** です。
+Python 側の開発環境は **uv**、フロントエンドは **Vite + React 18 + TypeScript** です。
+
+```bash
+# リポジトリルートで実行
+uv sync
+uv run streamlit run example.py
+uv run pytest
+uv run black --check .
+uv run flake8 .
+uv run mypy st_chat_input_multimodal/
+```
 
 ```bash
 # st_chat_input_multimodal/frontend 配下で実行

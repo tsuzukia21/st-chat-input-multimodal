@@ -28,6 +28,19 @@ A multimodal chat input component for Streamlit that supports text input, image 
 pip install st-chat-input-multimodal
 ```
 
+## Development
+
+```bash
+uv sync
+uv run streamlit run example.py
+
+cd st_chat_input_multimodal/frontend
+npm ci
+npm run build
+```
+
+`uv` manages the Python virtual environment in `.venv` and uses `uv.lock` for reproducible installs.
+
 ## Basic Usage
 
 ```python
