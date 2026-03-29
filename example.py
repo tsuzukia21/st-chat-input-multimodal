@@ -99,8 +99,6 @@ chat_result = multimodal_chat_input(
     placeholder="Enter chat message...",
     enable_voice_input=True,  # Enable voice input for chat as well
     key="chat_input",
-    voice_recognition_method="openai_whisper",  # or "openai_whisper"
-    voice_language="ja-JP",
 )
 if chat_result:
     st.session_state.chat_history.append(chat_result)
@@ -122,7 +120,7 @@ if st.session_state.chat_history:
                         )
                         image_bytes = base64.b64decode(base64_data)
                         st.image(image_bytes, caption=file["name"], width=200)
-                    except:
+                    except Exception:
                         st.write(f"📎 {file['name']}")
 
             # Display voice input information
