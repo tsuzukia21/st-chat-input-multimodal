@@ -126,7 +126,6 @@ function MultimodalChatInput({
   const getStyles = useStyles(theme, {
     isFocused,
     isDragOver,
-    isAddButtonPressed: false,
     isRecording: voiceHook.isRecording,
     isTranscribing: voiceHook.isTranscribing,
     hasContent,

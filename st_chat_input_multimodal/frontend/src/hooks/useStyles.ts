@@ -12,7 +12,6 @@ interface Theme {
 interface StyleOptions {
   isFocused: boolean
   isDragOver: boolean
-  isAddButtonPressed: boolean
   isRecording: boolean
   isTranscribing: boolean
   hasContent: boolean
@@ -30,7 +29,6 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
     const {
       isFocused,
       isDragOver,
-      isAddButtonPressed,
       isRecording,
       isTranscribing,
       hasContent,
@@ -125,7 +123,7 @@ export const useStyles = (theme: Theme | undefined, options: StyleOptions) => {
         justifyContent: 'center',
         width: `${FRAME_HEIGHT.base}px`,
         height: `${FRAME_HEIGHT.base}px`,
-        backgroundColor: isAddButtonPressed ? 'rgba(128, 128, 128, 0.2)' : 'transparent',
+        backgroundColor: 'transparent',
         color: textColor,
         border: 'none',
         borderRadius: UI_LAYOUT.circleBorderRadius,
