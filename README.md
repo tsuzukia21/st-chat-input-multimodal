@@ -14,11 +14,12 @@ A multimodal chat input component for Streamlit that supports text input, image 
 
 - 📝 **Text Input**: Same usability as st.chat_input
 - 🖼️ **Image File Upload**: Supports jpg, png, gif, webp
-- 🎤 **Voice Input**: Web Speech API / OpenAI Whisper API support
-- 🔒 **Input Validation**: File count, file size, and parameter validation
+- 🎤 **Voice Input**: Web Speech API / server-side OpenAI Whisper support
+- 🔒 **Input Validation**: File count, file size, MIME/content, and parameter validation
 - 🎨 **Streamlit Standard Theme**: Fully compatible design
 - 🔄 **Drag & Drop**: File drag and drop support
 - ⌨️ **Ctrl+V**: Paste images from clipboard
+- 🚨 **Inline Errors**: User-safe inline messages
 - ⚙️ **Customizable**: Rich configuration options
 
 ## Installation
@@ -45,7 +46,7 @@ if result:
     if result['files']:
         for file in result['files']:
             import base64
-            base64_data = file['data'].split(',')[1]
+            base64_data = file['data'].split(',')[1] if ',' in file['data'] else file['data']
             image_bytes = base64.b64decode(base64_data)
             st.image(image_bytes, caption=file['name'])
     
@@ -67,14 +68,16 @@ result = multimodal_chat_input(
     max_recording_time=60
 )
 
-# Using OpenAI Whisper API
+# Using OpenAI Whisper on the server side
+# Preferred: set OPENAI_API_KEY in the Python environment
 result = multimodal_chat_input(
     enable_voice_input=True,
     voice_recognition_method="openai_whisper",
-    openai_api_key="sk-your-api-key",
     voice_language="ja-JP"
 )
 ```
+
+When `openai_whisper` is selected, recorded audio is sent to the Python backend for transcription. The API key is used only on the server side and is never forwarded to the browser.
 
 #### Voice Transcription Error Handling
 
@@ -102,6 +105,7 @@ result = multimodal_chat_input(
 ```
 
 `max_chars`, `max_file_size_mb`, and `max_files` must be positive integers. `max_recording_time` must be between `1` and `300`, and `voice_recognition_method` must be either `"web_speech"` or `"openai_whisper"`.
+Uploaded images are validated by extension and file signature, and displayed filenames are sanitized before rendering.
 
 ### Chat Usage
 
@@ -163,7 +167,7 @@ if st.button("Clear History"):
 
 ### Example Chat App
 
-![tsuzukia21/streamlit-chatbot](https://github.com/tsuzukia21/streamlit-chatbot)
+[streamlit-chatbot example](https://github.com/tsuzukia21/streamlit-chatbot)
 
 ## License
 
