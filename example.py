@@ -47,8 +47,7 @@ if result:
     )
 
 with st.expander("API Specification"):
-    st.markdown(
-        """
+    st.markdown("""
     ```python
     multimodal_chat_input(
         placeholder="Enter message...",                  # Placeholder text
@@ -86,8 +85,7 @@ with st.expander("API Specification"):
         }
     }
     ```
-    """
-    )
+    """)
 
 
 # Manage history in session state
