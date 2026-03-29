@@ -87,6 +87,7 @@ export interface RawComponentArgs {
   max_recording_time?: number
   transcription_result?: string
   transcription_error?: string
+  transcription_feedback_id?: string
 }
 
 export interface ComponentArgs {
@@ -101,6 +102,7 @@ export interface ComponentArgs {
   maxRecordingTime?: number
   transcriptionResult?: string
   transcriptionError?: string
+  transcriptionFeedbackId?: string
 }
 
 export interface ComponentResult {

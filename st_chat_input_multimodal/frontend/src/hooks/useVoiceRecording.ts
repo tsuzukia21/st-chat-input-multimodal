@@ -22,6 +22,7 @@ interface UseVoiceRecordingProps {
   maxRecordingTime: number
   transcriptionResult?: string
   transcriptionError?: string
+  transcriptionFeedbackId?: string
   onTextUpdate: (text: string) => void
   onError?: (error: ErrorState) => void
   onClearError?: () => void
@@ -49,6 +50,7 @@ export const useVoiceRecording = ({
   maxRecordingTime,
   transcriptionResult,
   transcriptionError,
+  transcriptionFeedbackId,
   onTextUpdate,
   onError,
   onClearError,
@@ -67,6 +69,7 @@ export const useVoiceRecording = ({
   const lastRecordingDurationRef = useRef<number>(0)
   const discardRecordingRef = useRef<boolean>(false)
   const isUnmountedRef = useRef<boolean>(false)
+  const handledTranscriptionFeedbackIdRef = useRef<string | null>(null)
 
   const reportError = useCallback((
     message: string,
@@ -80,9 +83,19 @@ export const useVoiceRecording = ({
   }, [recordingTime])
 
   useEffect(() => {
+    if (!transcriptionFeedbackId) {
+      return
+    }
+
     if (transcriptionResult === undefined && transcriptionError === undefined) {
       return
     }
+
+    if (handledTranscriptionFeedbackIdRef.current === transcriptionFeedbackId) {
+      return
+    }
+
+    handledTranscriptionFeedbackIdRef.current = transcriptionFeedbackId
 
     if (transcriptionError) {
       reportError(transcriptionError)
@@ -103,6 +116,7 @@ export const useVoiceRecording = ({
 
     setIsTranscribing(false)
   }, [
+    transcriptionFeedbackId,
     transcriptionResult,
     transcriptionError,
     voiceLanguage,

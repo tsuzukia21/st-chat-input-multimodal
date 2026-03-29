@@ -170,10 +170,12 @@ def _set_transcription_feedback(
     request_fingerprint: str,
     transcription_result_key: str,
     transcription_error_key: str,
+    transcription_feedback_id_key: str,
     transcription_result: Optional[str] = None,
     transcription_error: Optional[str] = None,
 ) -> None:
     st.session_state[processed_request_key] = request_fingerprint
+    st.session_state[transcription_feedback_id_key] = request_fingerprint
 
     if transcription_result is None:
         st.session_state.pop(transcription_result_key, None)
@@ -320,9 +322,13 @@ def multimodal_chat_input(
     last_value_key = f"_last_multimodal_value_{key}"
     transcription_result_key = _build_session_state_key(key, "transcription_result")
     transcription_error_key = _build_session_state_key(key, "transcription_error")
+    transcription_feedback_id_key = _build_session_state_key(
+        key, "transcription_feedback_id"
+    )
     processed_request_key = _build_session_state_key(key, "processed_transcription")
     transcription_result = st.session_state.pop(transcription_result_key, None)
     transcription_error = st.session_state.pop(transcription_error_key, None)
+    transcription_feedback_id = st.session_state.pop(transcription_feedback_id_key, None)
 
     # Always use st._bottom to fix to the bottom of the screen
     with st._bottom:
@@ -339,6 +345,7 @@ def multimodal_chat_input(
             max_recording_time=max_recording_time,
             transcription_result=transcription_result,
             transcription_error=transcription_error,
+            transcription_feedback_id=transcription_feedback_id,
             key=key,
             default=None
         )
@@ -359,6 +366,7 @@ def multimodal_chat_input(
                 request_fingerprint=request_fingerprint,
                 transcription_result_key=transcription_result_key,
                 transcription_error_key=transcription_error_key,
+                transcription_feedback_id_key=transcription_feedback_id_key,
                 transcription_error=_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE,
             )
             st.rerun()
@@ -369,6 +377,7 @@ def multimodal_chat_input(
                 request_fingerprint=request_fingerprint,
                 transcription_result_key=transcription_result_key,
                 transcription_error_key=transcription_error_key,
+                transcription_feedback_id_key=transcription_feedback_id_key,
                 transcription_error=_TRANSCRIPTION_NOT_AVAILABLE_MESSAGE,
             )
             st.rerun()
@@ -386,6 +395,7 @@ def multimodal_chat_input(
                 request_fingerprint=request_fingerprint,
                 transcription_result_key=transcription_result_key,
                 transcription_error_key=transcription_error_key,
+                transcription_feedback_id_key=transcription_feedback_id_key,
                 transcription_error=_get_transcription_error_message(exc),
             )
             st.rerun()
@@ -395,6 +405,7 @@ def multimodal_chat_input(
             request_fingerprint=request_fingerprint,
             transcription_result_key=transcription_result_key,
             transcription_error_key=transcription_error_key,
+            transcription_feedback_id_key=transcription_feedback_id_key,
             transcription_result=transcription_text,
         )
         st.rerun()

@@ -42,6 +42,7 @@ const normalizeComponentArgs = (rawArgs: RawComponentArgs): ComponentArgs => ({
   maxRecordingTime: rawArgs.max_recording_time,
   transcriptionResult: rawArgs.transcription_result,
   transcriptionError: rawArgs.transcription_error,
+  transcriptionFeedbackId: rawArgs.transcription_feedback_id,
 })
 
 /**
@@ -68,6 +69,7 @@ function MultimodalChatInput({
     maxRecordingTime = DEFAULT_MAX_RECORDING_TIME,
     transcriptionResult,
     transcriptionError,
+    transcriptionFeedbackId,
   } = normalizedArgs
 
   // Component state
@@ -85,6 +87,11 @@ function MultimodalChatInput({
   const handleError = useCallback((nextError: ErrorState) => {
     setError(nextError)
   }, [])
+
+  const handleVoiceTextUpdate = useCallback((text: string) => {
+    clearError()
+    setInputText(prev => prev + text)
+  }, [clearError])
 
   // File upload hook
   const {
@@ -114,10 +121,8 @@ function MultimodalChatInput({
     maxRecordingTime,
     transcriptionResult,
     transcriptionError,
-    onTextUpdate: (text: string) => {
-      clearError()
-      setInputText(prev => prev + text)
-    },
+    transcriptionFeedbackId,
+    onTextUpdate: handleVoiceTextUpdate,
     onError: handleError,
     onClearError: clearError,
   })
