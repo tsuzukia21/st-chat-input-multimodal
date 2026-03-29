@@ -133,7 +133,7 @@ def _transcribe_audio(
     response = client.audio.transcriptions.create(
         model="whisper-1",
         file=audio_buffer,
-        language=language_code or None,
+        language=language_code if language_code else None,  # type: ignore[arg-type]
     )
 
     return response.text.strip()
@@ -423,7 +423,7 @@ def multimodal_chat_input(
             st.session_state[last_value_key] = component_value
 
             # Remove internal timestamp before returning to user
-            result = component_value.copy()
+            result: Dict[str, Any] = component_value.copy()
             if "_timestamp" in result:
                 del result["_timestamp"]
             return result
