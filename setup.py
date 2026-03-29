@@ -1,11 +1,14 @@
 import setuptools
+from pathlib import Path
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+version = Path(__file__).parent.joinpath("VERSION").read_text().strip()
+
 setuptools.setup(
     name="st-chat-input-multimodal",
-    version="1.0.6",
+    version=version,
     author="tsuzukia21",
     description="Streamlit multimodal chat input component with text, image, and voice support",
     long_description=long_description,

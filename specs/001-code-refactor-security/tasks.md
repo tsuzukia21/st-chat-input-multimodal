@@ -108,7 +108,7 @@
 - [X] T027 [P] フロントエンドビルド実行: `cd st_chat_input_multimodal/frontend && npm run build` が成功することを確認
 - [X] T028 未使用のエクスポート・デッドコードを確認し削除
 - [X] T029 全ファイルの変更をレビューし、内部システム詳細がユーザーに露出するエラーメッセージがないことを確認
-- [ ] T030 バージョン管理方針を整理し、`2.0.0` リリースに向けて正本バージョンの管理方法と更新対象（`setup.py`, `st_chat_input_multimodal/frontend/package.json`, `st_chat_input_multimodal/frontend/package-lock.json`）を統一する
+- [X] T030 バージョン管理方針を整理し、`2.0.0` リリースに向けて正本バージョンの管理方法と更新対象（`setup.py`, `st_chat_input_multimodal/frontend/package.json`, `st_chat_input_multimodal/frontend/package-lock.json`）を統一する
 
 ---
 
